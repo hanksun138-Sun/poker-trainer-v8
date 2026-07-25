@@ -1,0 +1,6 @@
+{
+  "name": "GTO Poker Trainer (GTO 训练舱 v8.0)",
+  "description": "GTO扑克训练舱：含169/1326组合权重发牌、RangeConverter翻前精确解集数字化、TexasSolver翻后策略树(A高干燥面等)以及Gemini AI策略审计教练。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
