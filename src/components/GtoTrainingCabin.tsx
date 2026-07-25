@@ -42,15 +42,15 @@ export const ALL_CASINO_SEATS: CasinoSeat[] = [
 
 // Radial coordinates for 9-max full ring seats around oval table
 const NINE_MAX_COORDS: { top: string; left: string }[] = [
-  { top: '85%', left: '50%' }, // Seat 0 (Hero - Bottom Center)
-  { top: '82%', left: '74%' }, // Seat 1 (Bottom Right)
-  { top: '56%', left: '88%' }, // Seat 2 (Right Middle)
-  { top: '24%', left: '80%' }, // Seat 3 (Top Right)
-  { top: '15%', left: '60%' }, // Seat 4 (Top Center-Right)
-  { top: '15%', left: '40%' }, // Seat 5 (Top Center-Left)
-  { top: '24%', left: '20%' }, // Seat 6 (Top Left)
-  { top: '56%', left: '12%' }, // Seat 7 (Left Middle)
-  { top: '82%', left: '26%' }, // Seat 8 (Bottom Left)
+  { top: '80%', left: '50%' }, // Seat 0 (Hero - Bottom Center)
+  { top: '76%', left: '76%' }, // Seat 1 (Bottom Right)
+  { top: '50%', left: '88%' }, // Seat 2 (Right Middle)
+  { top: '22%', left: '78%' }, // Seat 3 (Top Right)
+  { top: '15%', left: '58%' }, // Seat 4 (Top Center-Right)
+  { top: '15%', left: '42%' }, // Seat 5 (Top Center-Left)
+  { top: '22%', left: '22%' }, // Seat 6 (Top Left)
+  { top: '50%', left: '12%' }, // Seat 7 (Left Middle)
+  { top: '76%', left: '24%' }, // Seat 8 (Bottom Left)
 ];
 
 export function getHandMasteryStatus(record?: HandMasteryData): 'MASTERED' | 'GRAY_ZONE' | 'NEEDS_WORK' | 'UNTESTED' {
@@ -198,11 +198,11 @@ const SIX_MAX_POSITIONS: Position[] = ['SB', 'BB', 'UTG', 'HJ', 'CO', 'BTN'];
 
 // Radial coordinates for 6-max seats around oval table
 const SEAT_POSITIONS_MAP: Record<Position, { top: string; left: string }> = {
-  UTG: { top: '12%', left: '30%' },
-  HJ: { top: '12%', left: '70%' },
+  UTG: { top: '16%', left: '30%' },
+  HJ: { top: '16%', left: '70%' },
   CO: { top: '50%', left: '88%' },
-  BTN: { top: '85%', left: '70%' },
-  SB: { top: '85%', left: '30%' },
+  BTN: { top: '80%', left: '70%' },
+  SB: { top: '80%', left: '30%' },
   BB: { top: '50%', left: '12%' },
 };
 
@@ -998,152 +998,454 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
         </div>
       </div>
 
-      {/* 169 Hand GTO Mastery Heatmap & Adaptive Drill Engine Panel */}
-      {(() => {
-        const matrixHandNames = get169HandNames();
-        let mastered = 0;
-        let grayZone = 0;
-        let needsWork = 0;
-        let untested = 0;
+      {/* Realistic Oval Poker Table Canvas */}
+      <div className="relative bg-gradient-to-b from-slate-900 via-slate-950 to-slate-950 border border-slate-800 rounded-3xl p-2 sm:p-4 shadow-2xl flex flex-col justify-between my-1">
+        
+        {/* Table Felt Green Oval Container */}
+        <div className="relative w-full max-w-4xl mx-auto aspect-[2.2/1] min-h-[300px] sm:min-h-[360px] bg-gradient-to-tr from-emerald-950 via-emerald-900 to-teal-950 rounded-[100px] sm:rounded-[160px] border-[10px] sm:border-[14px] border-amber-950/80 shadow-[inset_0_0_60px_rgba(0,0,0,0.8)] flex flex-col items-center justify-center p-2 sm:p-4 my-1">
+          
+          {/* Inner Table Trim Line */}
+          <div className="absolute inset-3 rounded-[90px] sm:rounded-[140px] border border-emerald-500/20 pointer-events-none" />
 
-        matrixHandNames.flat().forEach((hand) => {
-          const rec = handMasteryMap[`${heroPos}_${hand}`];
-          const st = getHandMasteryStatus(rec);
-          if (st === 'MASTERED') mastered++;
-          else if (st === 'GRAY_ZONE') grayZone++;
-          else if (st === 'NEEDS_WORK') needsWork++;
-          else untested++;
-        });
+          {/* Center Board & Pot Display */}
+          <div className="relative z-10 flex flex-col items-center justify-center space-y-1 sm:space-y-2">
+            
+            {/* Main Pot Chips Badge */}
+            <div className="px-3 py-1 rounded-full bg-slate-950/95 border border-amber-500/80 text-amber-300 font-mono text-xs sm:text-sm font-bold shadow-2xl flex items-center gap-1.5">
+              <span>🪙 底池 (POT):</span>
+              <span className="text-emerald-400 font-black text-sm sm:text-base">{potSize} BB</span>
+            </div>
 
-        const masteredPct = Math.round((mastered / 169) * 100);
-        const grayPct = Math.round((grayZone / 169) * 100);
-        const needsWorkPct = Math.round((needsWork / 169) * 100);
-
-        return (
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl space-y-4">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-b border-slate-800 pb-3">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
-                  <Target className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                    <span>{heroPos} 位置 169 手牌 GTO 掌握度热力阵图</span>
-                    <span className="text-xs font-mono font-bold text-amber-400 bg-amber-950/80 border border-amber-800 px-2 py-0.5 rounded-md">
-                      掌握进度 {masteredPct}%
-                    </span>
-                  </h3>
-                  <p className="text-xs text-slate-400">
-                    🟢 已掌握 ({mastered}) • 🟡 灰色地带 ({grayZone}) • 🔴 重点错题 ({needsWork}) • ⚪ 未测试 ({untested})
-                  </p>
-                </div>
-              </div>
-
-              {/* Drill Mode Controls */}
-              <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-between md:justify-end">
-                <div className="bg-slate-950 p-1 rounded-xl border border-slate-800 flex items-center space-x-1 text-xs">
-                  <button
-                    onClick={() => setDrillMode('ADAPTIVE')}
-                    className={`px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition-all cursor-pointer ${
-                      drillMode === 'ADAPTIVE'
-                        ? 'bg-amber-500 text-slate-950 font-black shadow-md'
-                        : 'text-slate-400 hover:text-slate-200'
+            {/* Community Board Cards */}
+            <div className="flex items-center space-x-1.5 sm:space-x-2 my-1">
+              {boardCards.length > 0 ? (
+                boardCards.map((card, idx) => (
+                  <div
+                    key={idx}
+                    className={`w-11 h-16 sm:w-15 sm:h-21 md:w-17 md:h-24 rounded-xl border-2 border-slate-300 shadow-2xl flex flex-col items-center justify-between p-1 font-mono font-black select-none transition-all hover:scale-105 ${
+                      SUIT_COLORS[card.suit]
                     }`}
                   >
-                    <Brain className="w-3.5 h-3.5" />
-                    <span>⚡ 自适应弱点强化</span>
-                  </button>
-                  <button
-                    onClick={() => setDrillMode('RANDOM')}
-                    className={`px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition-all cursor-pointer ${
-                      drillMode === 'RANDOM'
-                        ? 'bg-slate-700 text-white'
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    <span>🎲 纯随机发牌</span>
-                  </button>
-                </div>
+                    <span className="text-base sm:text-xl md:text-2xl leading-none">{card.rank}</span>
+                    <span className="text-xl sm:text-2xl md:text-3xl leading-none">{SUIT_SYMBOLS[card.suit]}</span>
+                  </div>
+                ))
+              ) : (
+                <div className="text-emerald-200/80 italic text-xs py-2 font-mono font-medium">Preflop 翻前开局阶段...</div>
+              )}
+            </div>
+          </div>
 
-                <button
-                  onClick={() => setShowMasteryMatrix(!showMasteryMatrix)}
-                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition-all cursor-pointer flex items-center space-x-1"
+          {/* Render 9 Seats around the Poker Table (Casino Mode with rotating Button & AI personalities) */}
+          {trainingStage === 'STAGE_5_CASINO_RING' ? (
+            ALL_CASINO_SEATS.map((seat, seatIdx) => {
+              const isOccupied = activeCasinoSeats[seatIdx];
+              const isDealer = isOccupied && seatIdx === btnSeatIndex;
+              const isHeroSeat = seat.id === 0;
+              const coords = NINE_MAX_COORDS[seatIdx];
+
+              if (!isOccupied) {
+                return (
+                  <div
+                    key={seat.id}
+                    style={{ top: coords.top, left: coords.left }}
+                    className="absolute -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center opacity-60"
+                  >
+                    <div className="px-2 py-0.5 rounded-lg border border-dashed border-slate-700/80 bg-slate-950/60 text-slate-400 text-[9px] font-mono shadow">
+                      <span>┼ {seatIdx}号位 空位</span>
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div
+                  key={seat.id}
+                  style={{ top: coords.top, left: coords.left }}
+                  className="absolute -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center"
                 >
-                  <Layers className="w-3.5 h-3.5 text-amber-400" />
-                  <span>{showMasteryMatrix ? '收起 169 矩阵' : '展开 169 矩阵热力图'}</span>
-                </button>
+                  {/* Dealer Button Chip */}
+                  {isDealer && (
+                    <div className="absolute -top-2.5 -right-2.5 z-30 w-5 h-5 rounded-full bg-amber-100 border-2 border-amber-500 text-amber-950 font-black text-[10px] flex items-center justify-center shadow-lg animate-bounce">
+                      D
+                    </div>
+                  )}
+
+                  {/* Player Seat Card Badge */}
+                  <div
+                    className={`px-2 py-1 rounded-xl border flex flex-col items-center shadow-xl transition-all ${seat.bgColor} ${seat.borderColor} ${
+                      isHeroSeat ? 'ring-2 ring-amber-400/60 scale-105' : 'opacity-90'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span className="text-xs">{seat.avatar}</span>
+                      <span className="font-bold text-[11px] text-white whitespace-nowrap">{seat.name}</span>
+                    </div>
+                    <span className="text-[9px] font-mono text-slate-300 opacity-90">{seat.styleLabel}</span>
+                  </div>
+
+                  {/* Player Action Text Badge */}
+                  <div className={`mt-0.5 px-1.5 py-0.5 rounded-full border text-[9px] sm:text-[10px] font-mono font-bold shadow whitespace-nowrap ${
+                    isHeroSeat
+                      ? isEvaluated ? 'bg-emerald-950 text-emerald-300 border-emerald-600' : 'bg-amber-400 text-slate-950 border-amber-300 font-black animate-pulse'
+                      : isDealer ? 'bg-indigo-950 text-indigo-300 border-indigo-600' : 'bg-slate-900 text-slate-300 border-slate-700'
+                  }`}>
+                    {isHeroSeat ? (isEvaluated ? '已决策' : '🎯 Hero 决策中') : isDealer ? 'D 庄家位' : '❌ 弃牌 Fold'}
+                  </div>
+
+                  {/* Dealt Hole Cards */}
+                  {isHeroSeat ? (
+                    <div className="flex items-center space-x-1 mt-1 animate-in fade-in zoom-in-95 duration-200">
+                      {heroCards.map((card, idx) => (
+                        <div
+                          key={idx}
+                          className={`w-9 h-13 sm:w-11 sm:h-16 md:w-13 md:h-18 rounded-lg border-2 border-slate-300 shadow-xl flex flex-col items-center justify-between p-0.5 font-mono font-black select-none ${
+                            SUIT_COLORS[card.suit]
+                          }`}
+                        >
+                          <span className="text-xs sm:text-sm leading-none">{card.rank}</span>
+                          <span className="text-sm sm:text-lg leading-none">{SUIT_SYMBOLS[card.suit]}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-0.5 mt-0.5 opacity-80">
+                      <div className="w-5 h-7 sm:w-6 sm:h-9 rounded bg-indigo-950 border border-indigo-700 flex items-center justify-center text-[9px] text-indigo-300 shadow">🎴</div>
+                      <div className="w-5 h-7 sm:w-6 sm:h-9 rounded bg-indigo-950 border border-indigo-700 flex items-center justify-center text-[9px] text-indigo-300 shadow">🎴</div>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          ) : (
+            SIX_MAX_POSITIONS.map((pos) => {
+              const isHero = pos === heroPos;
+              const isVillain = pos === villainPos;
+              const coords = SEAT_POSITIONS_MAP[pos];
+
+              {/* Action Badge Calculation for 6-Max Player Seats */}
+              let actionBadge = { label: '❌ 弃牌 Fold', bg: 'bg-slate-900/90 text-slate-400 border-slate-700/80' };
+              if (isHero) {
+                if (isEvaluated) {
+                  const chosenText = evalResult?.chosenOption?.label || '已决策';
+                  actionBadge = {
+                    label: evalResult?.isOptimal ? `✅ ${chosenText}` : `⚠️ ${chosenText}`,
+                    bg: evalResult?.isOptimal ? 'bg-emerald-950 text-emerald-300 border-emerald-600' : 'bg-rose-950 text-rose-300 border-rose-600',
+                  };
+                } else {
+                  actionBadge = { label: '🎯 Hero 决策中', bg: 'bg-amber-400 text-slate-950 border-amber-300 font-black animate-pulse' };
+                }
+              } else if (isVillain) {
+                if (scenarioMode === 'PREFLOP_RFI') {
+                  actionBadge = { label: '⏳ 盲注待定', bg: 'bg-slate-800 text-slate-300 border-slate-600' };
+                } else if (scenarioMode === 'PREFLOP_3BET') {
+                  actionBadge = { label: '💥 3-Bet 加注 7.5x', bg: 'bg-rose-950 text-rose-300 border-rose-600 font-bold' };
+                } else if (scenarioMode === 'PREFLOP_CALL_VS_OPEN' || scenarioMode === 'PREFLOP_BB_DEFENSE') {
+                  actionBadge = { label: '💥 翻前加注 2.5x', bg: 'bg-amber-950 text-amber-300 border-amber-600 font-bold' };
+                } else {
+                  actionBadge = { label: '💥 入局对战 (Villain)', bg: 'bg-indigo-950 text-indigo-300 border-indigo-600 font-bold' };
+                }
+              }
+
+              return (
+                <div
+                  key={pos}
+                  style={{ top: coords.top, left: coords.left }}
+                  className="absolute -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center"
+                >
+                  {/* Player Seat Chip Badge */}
+                  <div
+                    className={`px-2.5 py-1 rounded-xl border flex flex-col items-center shadow-xl transition-all ${
+                      isHero
+                        ? 'bg-slate-900 border-amber-400 ring-2 ring-amber-400/50 scale-105'
+                        : isVillain
+                        ? 'bg-slate-900 border-rose-500 ring-2 ring-rose-500/30'
+                        : 'bg-slate-950/80 border-slate-800 opacity-60'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span className="font-mono font-black text-xs text-slate-100">{pos}</span>
+                      {isHero && <span className="text-[9px] bg-amber-400 text-slate-950 font-black px-1 rounded">Hero</span>}
+                      {isVillain && <span className="text-[9px] bg-rose-500 text-white font-black px-1 rounded">Villain</span>}
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-300">100 BB</span>
+                  </div>
+
+                  {/* Player Action Text Badge */}
+                  <div className={`mt-0.5 px-2 py-0.5 rounded-full border text-[10px] font-mono font-bold shadow-md whitespace-nowrap ${actionBadge.bg}`}>
+                    {actionBadge.label}
+                  </div>
+
+                  {/* Dealt Hole Cards for Hero or Villain */}
+                  {isHero && (
+                    <div className="flex items-center space-x-1 mt-1 animate-in fade-in zoom-in-95 duration-200">
+                      {heroCards.map((card, idx) => (
+                        <div
+                          key={idx}
+                          className={`w-9 h-13 sm:w-11 sm:h-16 md:w-13 md:h-18 rounded-lg border-2 border-slate-300 shadow-xl flex flex-col items-center justify-between p-0.5 font-mono font-black select-none ${
+                            SUIT_COLORS[card.suit]
+                          }`}
+                        >
+                          <span className="text-xs sm:text-sm leading-none">{card.rank}</span>
+                          <span className="text-sm sm:text-lg leading-none">{SUIT_SYMBOLS[card.suit]}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {isVillain && (
+                    <div className="flex items-center space-x-0.5 mt-0.5 opacity-80">
+                      <div className="w-5 h-7 sm:w-6 sm:h-9 rounded bg-indigo-950 border border-indigo-700 flex items-center justify-center text-[9px] text-indigo-300 shadow">🎴</div>
+                      <div className="w-5 h-7 sm:w-6 sm:h-9 rounded bg-indigo-950 border border-indigo-700 flex items-center justify-center text-[9px] text-indigo-300 shadow">🎴</div>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+
+        </div>
+
+        {/* Live Casino Dialogue Feed Banner */}
+        {trainingStage === 'STAGE_5_CASINO_RING' && (
+          <div className="bg-slate-950/90 border border-amber-500/30 p-2.5 rounded-xl my-2 flex items-center space-x-2 text-xs sm:text-sm font-mono text-amber-200 shadow-md">
+            <MessageSquare className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
+            <span className="truncate">{casinoRecentDialogue}</span>
+          </div>
+        )}
+
+        {/* Action Control Deck (iPad & Mobile Optimized) */}
+        <div className="relative z-20 mt-6 pt-4 border-t border-slate-800/80 max-w-2xl mx-auto w-full">
+          {!isEvaluated ? (
+            <div className="space-y-4 text-center">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 bg-slate-900/90 border border-slate-800 p-2.5 rounded-2xl shadow-md">
+                <span className="text-xs sm:text-sm text-slate-200 font-bold">
+                  当前轮到 Hero ({heroPos}) 决策 | 手牌 [{heroNotation}]:
+                </span>
+                <div className="flex items-center space-x-1.5">
+                  {heroCards.map((c, i) => (
+                    <div
+                      key={i}
+                      className={`w-9 h-13 sm:w-11 sm:h-16 rounded-lg border-2 border-slate-300 shadow-md flex flex-col items-center justify-between p-1 font-mono font-black text-xs sm:text-sm select-none ${
+                        SUIT_COLORS[c.suit]
+                      }`}
+                    >
+                      <span className="leading-none">{c.rank}</span>
+                      <span className="text-sm sm:text-base leading-none">{SUIT_SYMBOLS[c.suit]}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Action Buttons with Multi-Sizing & All-In Support */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-3">
+                {options.map((opt) => (
+                  <button
+                    key={opt.action}
+                    onClick={() => handleSelectAction(opt.action)}
+                    className={`py-3.5 px-3 rounded-xl border font-black text-xs sm:text-sm transition-all shadow-lg active:scale-95 cursor-pointer flex flex-col items-center justify-center gap-1 text-center ${
+                      opt.action === 'ALL_IN'
+                        ? 'bg-gradient-to-r from-rose-950 via-rose-900 to-amber-950 hover:from-rose-800 hover:to-amber-700 border-rose-500 text-rose-100 font-black shadow-rose-950/80 ring-2 ring-rose-500/50 scale-[1.02]'
+                        : opt.action === 'CALL'
+                        ? 'bg-emerald-950 hover:bg-emerald-600 border-emerald-500/80 text-emerald-200 hover:text-white shadow-emerald-950/50'
+                        : opt.action === 'FOLD'
+                        ? 'bg-rose-950/80 hover:bg-rose-700 border-rose-800 text-rose-200 hover:text-white'
+                        : opt.action === 'CBET_125' || opt.action === 'CBET_150'
+                        ? 'bg-indigo-950 hover:bg-indigo-600 border-indigo-500/80 text-indigo-200 hover:text-white'
+                        : opt.action === 'RAISE_2' || opt.action === 'RAISE_2_5' || opt.action === 'RAISE_3' || opt.action === 'THREE_BET' || opt.action === 'FOUR_BET'
+                        ? 'bg-amber-950/90 hover:bg-amber-600 border-amber-500/80 text-amber-200 hover:text-white'
+                        : 'bg-slate-900 hover:bg-amber-600 border-slate-700 hover:border-amber-500 text-slate-100 hover:text-white'
+                    }`}
+                  >
+                    <span>{opt.label}</span>
+                  </button>
+                ))}
               </div>
             </div>
-
-            {/* Segmented Mastery Bar */}
-            <div className="space-y-1.5">
-              <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden flex border border-slate-800 p-0.5">
-                <div style={{ width: `${(mastered / 169) * 100}%` }} className="bg-emerald-500 h-full rounded-l-full transition-all" title={`已掌握 ${mastered} 手`} />
-                <div style={{ width: `${(grayZone / 169) * 100}%` }} className="bg-amber-400 h-full transition-all" title={`灰色地带 ${grayZone} 手`} />
-                <div style={{ width: `${(needsWork / 169) * 100}%` }} className="bg-rose-500 h-full transition-all" title={`重点错题 ${needsWork} 手`} />
-                <div style={{ width: `${(untested / 169) * 100}%` }} className="bg-slate-800 h-full rounded-r-full transition-all" title={`未测试 ${untested} 手`} />
-              </div>
-              <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500" /> 🟢 已掌握 (准确率≥80%且≥2次): <strong className="text-emerald-400">{mastered}</strong></span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400" /> 🟡 灰色地带 (准确率40-79%): <strong className="text-amber-400">{grayZone}</strong></span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-rose-500" /> 🔴 尚未掌握/频繁做错: <strong className="text-rose-400">{needsWork}</strong></span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-slate-700" /> ⚪ 未测试: <strong className="text-slate-400">{untested}</strong></span>
-              </div>
-            </div>
-
-            {/* Interactive 13x13 Mastery Grid */}
-            {showMasteryMatrix && (
-              <div className="overflow-x-auto pt-2 animate-in fade-in duration-200">
-                <div className="inline-block min-w-[550px] w-full">
-                  <div className="grid grid-cols-13 gap-1 text-center font-mono">
-                    {matrixHandNames.map((row, rIdx) =>
-                      row.map((handName, cIdx) => {
-                        const rec = handMasteryMap[`${heroPos}_${handName}`];
-                        const st = getHandMasteryStatus(rec);
-                        const isCurrentHand = heroNotation === handName;
-
-                        let colorClass = 'bg-slate-950/70 border-slate-800/80 text-slate-500 hover:border-slate-600';
-                        if (st === 'MASTERED') {
-                          colorClass = 'bg-emerald-950/90 border-emerald-600/80 text-emerald-300 font-bold hover:bg-emerald-800/90';
-                        } else if (st === 'GRAY_ZONE') {
-                          colorClass = 'bg-amber-950/90 border-amber-600/80 text-amber-300 font-bold hover:bg-amber-800/90';
-                        } else if (st === 'NEEDS_WORK') {
-                          colorClass = 'bg-rose-950/90 border-rose-600/80 text-rose-300 font-bold hover:bg-rose-800/90 animate-pulse';
-                        }
-
-                        const trials = rec?.trials || 0;
-                        const acc = trials > 0 ? Math.round((rec.correct / trials) * 100) : 0;
-
-                        return (
-                          <button
-                            key={handName}
-                            onClick={() => drillSpecificHand(handName)}
-                            title={`手牌 ${handName} | 测试 ${trials} 次 | 准确率 ${acc}% | 状态: ${st}`}
-                            className={`p-1.5 sm:p-2 rounded-md border text-[10px] sm:text-xs transition-all relative cursor-pointer flex flex-col items-center justify-center ${colorClass} ${
-                              isCurrentHand ? 'ring-2 ring-amber-400 ring-offset-1 ring-offset-slate-900 z-10 scale-105' : ''
-                            }`}
-                          >
-                            <span className="leading-none">{handName}</span>
-                            {trials > 0 && (
-                              <span className="text-[9px] opacity-80 mt-0.5">
-                                {acc}%
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })
+          ) : (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              
+              {/* Detailed Instant Judgment Card */}
+              <div
+                className={`p-4 rounded-2xl border flex flex-col space-y-3 ${
+                  evalResult?.isOptimal
+                    ? 'bg-emerald-950/90 border-emerald-700 text-emerald-200 shadow-lg shadow-emerald-950/50'
+                    : 'bg-rose-950/90 border-rose-700 text-rose-200 shadow-lg shadow-rose-950/50'
+                }`}
+              >
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center space-x-3">
+                    {evalResult?.isOptimal ? (
+                      <CheckCircle2 className="w-7 h-7 text-emerald-400 shrink-0" />
+                    ) : (
+                      <AlertCircle className="w-7 h-7 text-rose-400 shrink-0" />
                     )}
+                    <div>
+                      <h4 className="font-black text-sm sm:text-base flex items-center gap-2">
+                        <span>{evalResult?.isOptimal ? '当场判定：✅ 决策正确' : '当场判定：❌ 决策偏离 (漏水)'}</span>
+                        <span className="text-xs px-2 py-0.5 rounded font-mono font-bold bg-slate-900/80 border border-slate-700">
+                          {evalResult?.isOptimal ? 'EV 0 mBB' : `EV 损耗 -${evalResult?.evLossMBB} mBB`}
+                        </span>
+                      </h4>
+                      <p className="text-xs opacity-90 font-mono mt-0.5">{evalResult?.message}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center space-x-2 shrink-0">
+                    <button
+                      onClick={handleRequestAudit}
+                      disabled={aiAuditLoading}
+                      className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-purple-900/90 hover:bg-purple-800 border border-purple-600 text-purple-200 text-xs font-bold transition-all cursor-pointer"
+                    >
+                      <Sparkles className="w-4 h-4 text-purple-300" />
+                      <span>{aiAuditLoading ? 'Gemini 审计中...' : 'Gemini AI 深入诊所'}</span>
+                    </button>
+
+                    {/* Multi-street Next Card Progression Buttons */}
+                    {scenarioMode === 'POSTFLOP_MULTI_STREET' && street === 'FLOP' && (
+                      <button
+                        onClick={dealTurnCard}
+                        className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-all cursor-pointer shadow-md"
+                      >
+                        <span>进入转牌 Turn 🎴</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    )}
+
+                    {scenarioMode === 'POSTFLOP_MULTI_STREET' && street === 'TURN' && (
+                      <button
+                        onClick={dealRiverCard}
+                        className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all cursor-pointer shadow-md"
+                      >
+                        <span>进入河牌 River 🎴</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    )}
+
+                    <button
+                      onClick={dealNewHand}
+                      className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black transition-all cursor-pointer shadow-md"
+                    >
+                      <span>下一发手牌</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-                <p className="text-[11px] text-slate-400 text-center mt-2 font-mono">
-                  💡 点击矩阵中任意手牌格，可立即发起对该手牌的单手独训强攻！
-                </p>
+
+                {/* Solver Action Frequency Distribution Bars */}
+                <div className="pt-2 border-t border-slate-800/60 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {options.map((opt) => {
+                    const isChosen = userAction === opt.action;
+                    const pct = Math.round(opt.freq * 100);
+                    return (
+                      <div
+                        key={opt.action}
+                        className={`p-2 rounded-lg border font-mono text-xs flex flex-col justify-between ${
+                          isChosen
+                            ? 'bg-slate-900 border-amber-400/80 ring-2 ring-amber-400/30'
+                            : 'bg-slate-950/60 border-slate-800'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-slate-200">
+                            {opt.label} {isChosen && <span className="text-amber-400 font-black">(你的选择)</span>}
+                          </span>
+                          <span className="font-bold text-amber-400">{pct}%</span>
+                        </div>
+                        <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mt-1.5">
+                          <div
+                            className={`h-full ${opt.action === 'CALL' ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Immediate Strategic Explanation & Tactical Advice Box */}
+                {evalResult?.explanation && (
+                  <div className="pt-3 border-t border-slate-800/80 space-y-2.5 text-xs text-slate-100">
+                    <div className="flex items-center space-x-2 text-amber-300 font-bold">
+                      <Brain className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span>GTO 决策建议与原理详细说明:</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-slate-200 font-sans">
+                      <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1">
+                        <span className="text-amber-400 font-bold block">【决策诊断与战术原理】:</span>
+                        <p className="leading-relaxed opacity-90">{evalResult.explanation.reasoning}</p>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1">
+                        <span className="text-cyan-400 font-bold block">【范围与阻挡效应分析】:</span>
+                        <p className="leading-relaxed opacity-90">{evalResult.explanation.rangeLogic}</p>
+                      </div>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-amber-950/60 border border-amber-500/40 text-amber-200 font-medium leading-relaxed">
+                      {evalResult.explanation.actionTip}
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+
+              {/* Frequencies Bar Breakdown */}
+              <div className="bg-slate-900 border border-slate-800 p-3 rounded-xl text-xs space-y-2">
+                <div className="text-slate-400 font-medium">GTO Solver 概率构成:</div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {options.map((opt) => (
+                    <div
+                      key={opt.action}
+                      className={`p-2 rounded-lg border flex justify-between items-center ${
+                        userAction === opt.action
+                          ? 'border-amber-500 bg-slate-800 font-bold'
+                          : 'border-slate-800 bg-slate-950'
+                      }`}
+                    >
+                      <span className="text-slate-300">{opt.label}:</span>
+                      <span className="font-mono text-emerald-400 font-bold">{(opt.freq * 100).toFixed(1)}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+          )}
+        </div>
+
+      </div>
+
+      {/* Gemini AI Inline Audit Output */}
+      {aiAuditResult && (
+        <div className="bg-slate-900 border border-purple-800/80 rounded-2xl p-6 shadow-2xl space-y-4 animate-in fade-in duration-300">
+          <div className="flex items-center space-x-3 border-b border-purple-900/50 pb-3">
+            <Sparkles className="w-5 h-5 text-purple-400" />
+            <div>
+              <h3 className="text-sm font-bold text-slate-100">Gemini 3.6 Flash GTO 实战牌桌剖析</h3>
+              <p className="text-xs text-slate-400">基于 Range Advantage & Blockers 的深度求解分析</p>
+            </div>
           </div>
-        );
-      })()}
+
+          <div className="text-xs text-slate-300 leading-relaxed space-y-3">
+            <p className="bg-slate-950 p-4 rounded-xl border border-slate-800">{aiAuditResult.analysis}</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
+                <strong className="text-amber-400 block mb-1">范围优势:</strong>
+                <span>{aiAuditResult.keyConcepts.rangeAdvantage}</span>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
+                <strong className="text-cyan-400 block mb-1">阻挡牌效应:</strong>
+                <span>{aiAuditResult.keyConcepts.blockerEffect}</span>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
+                <strong className="text-emerald-400 block mb-1">EV 与决策理由:</strong>
+                <span>{aiAuditResult.keyConcepts.evComparison}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* iPad Touch & Scenario Control Banner */}
       {/* 5-Stage Mastery Progression Header */}
@@ -1784,416 +2086,152 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
         )}
       </div>
 
-      {/* Realistic Oval Poker Table Canvas */}
-      <div className="relative bg-gradient-to-b from-slate-900 via-slate-950 to-slate-950 border border-slate-800 rounded-3xl p-3 sm:p-6 md:p-8 shadow-2xl overflow-visible min-h-[540px] sm:min-h-[640px] flex flex-col justify-between">
-        
-        {/* Table Felt Green Oval Container */}
-        <div className="relative w-full max-w-4xl mx-auto aspect-[16/9] bg-gradient-to-tr from-emerald-950 via-emerald-900 to-teal-950 rounded-[120px] sm:rounded-[180px] border-[12px] sm:border-[16px] border-amber-950/80 shadow-[inset_0_0_60px_rgba(0,0,0,0.8)] flex flex-col items-center justify-center p-4 my-2">
-          
-          {/* Inner Table Trim Line */}
-          <div className="absolute inset-4 rounded-[100px] sm:rounded-[150px] border border-emerald-500/20 pointer-events-none" />
+      {/* 169 Hand GTO Mastery Heatmap & Adaptive Drill Engine Panel */}
+      {(() => {
+        const matrixHandNames = get169HandNames();
+        let mastered = 0;
+        let grayZone = 0;
+        let needsWork = 0;
+        let untested = 0;
 
-          {/* Center Board & Pot Display */}
-          <div className="relative z-10 flex flex-col items-center justify-center space-y-2">
-            
-            {/* Main Pot Chips Badge */}
-            <div className="px-4 py-1.5 rounded-full bg-slate-950/95 border border-amber-500/80 text-amber-300 font-mono text-sm sm:text-base font-bold shadow-2xl flex items-center gap-2">
-              <span>🪙 底池 (POT):</span>
-              <span className="text-emerald-400 font-black text-base sm:text-lg">{potSize} BB</span>
-            </div>
+        matrixHandNames.flat().forEach((hand) => {
+          const rec = handMasteryMap[`${heroPos}_${hand}`];
+          const st = getHandMasteryStatus(rec);
+          if (st === 'MASTERED') mastered++;
+          else if (st === 'GRAY_ZONE') grayZone++;
+          else if (st === 'NEEDS_WORK') needsWork++;
+          else untested++;
+        });
 
-            {/* Community Board Cards */}
-            <div className="flex items-center space-x-2 sm:space-x-3 my-2">
-              {boardCards.length > 0 ? (
-                boardCards.map((card, idx) => (
-                  <div
-                    key={idx}
-                    className={`w-13 h-19 sm:w-20 sm:h-28 md:w-24 md:h-34 rounded-xl border-2 border-slate-300 shadow-2xl flex flex-col items-center justify-between p-1.5 sm:p-2.5 font-mono font-black select-none transition-all hover:scale-105 ${
-                      SUIT_COLORS[card.suit]
-                    }`}
-                  >
-                    <span className="text-lg sm:text-2xl md:text-3xl leading-none">{card.rank}</span>
-                    <span className="text-2xl sm:text-3xl md:text-4xl leading-none">{SUIT_SYMBOLS[card.suit]}</span>
-                  </div>
-                ))
-              ) : (
-                <div className="text-emerald-200/80 italic text-xs sm:text-sm py-4 font-mono font-medium">Preflop 翻前开局阶段...</div>
-              )}
-            </div>
-          </div>
+        const masteredPct = Math.round((mastered / 169) * 100);
+        const grayPct = Math.round((grayZone / 169) * 100);
+        const needsWorkPct = Math.round((needsWork / 169) * 100);
 
-          {/* Render 9 Seats around the Poker Table (Casino Mode with rotating Button & AI personalities) */}
-          {trainingStage === 'STAGE_5_CASINO_RING' ? (
-            ALL_CASINO_SEATS.map((seat, seatIdx) => {
-              const isOccupied = activeCasinoSeats[seatIdx];
-              const isDealer = isOccupied && seatIdx === btnSeatIndex;
-              const isHeroSeat = seat.id === 0;
-              const coords = NINE_MAX_COORDS[seatIdx];
-
-              if (!isOccupied) {
-                return (
-                  <div
-                    key={seat.id}
-                    style={{ top: coords.top, left: coords.left }}
-                    className="absolute -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center opacity-60"
-                  >
-                    <div className="px-2.5 py-1 rounded-xl border border-dashed border-slate-700/80 bg-slate-950/60 text-slate-400 text-[10px] font-mono shadow">
-                      <span>┼ {seatIdx}号位 空位 (等待买入)</span>
-                    </div>
-                  </div>
-                );
-              }
-
-              return (
-                <div
-                  key={seat.id}
-                  style={{ top: coords.top, left: coords.left }}
-                  className="absolute -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center"
-                >
-                  {/* Dealer Button Chip */}
-                  {isDealer && (
-                    <div className="absolute -top-3 -right-3 z-30 w-6 h-6 rounded-full bg-amber-100 border-2 border-amber-500 text-amber-950 font-black text-xs flex items-center justify-center shadow-lg animate-bounce">
-                      D
-                    </div>
-                  )}
-
-                  {/* Player Seat Card Badge */}
-                  <div
-                    className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl border flex flex-col items-center shadow-xl transition-all ${seat.bgColor} ${seat.borderColor} ${
-                      isHeroSeat ? 'ring-4 ring-amber-400/50 scale-110' : 'opacity-90'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-1">
-                      <span className="text-xs sm:text-sm">{seat.avatar}</span>
-                      <span className="font-bold text-xs text-white whitespace-nowrap">{seat.name}</span>
-                    </div>
-                    <span className="text-[10px] font-mono text-slate-300 opacity-90">{seat.styleLabel}</span>
-                  </div>
-
-                  {/* Dealt Hole Cards */}
-                  {isHeroSeat ? (
-                    <div className="flex items-center space-x-1.5 mt-1.5 animate-in fade-in zoom-in-95 duration-200">
-                      {heroCards.map((card, idx) => (
-                        <div
-                          key={idx}
-                          className={`w-11 h-16 sm:w-16 sm:h-24 md:w-20 md:h-28 rounded-xl border-2 border-slate-300 shadow-2xl flex flex-col items-center justify-between p-1 sm:p-2 font-mono font-black select-none ${
-                            SUIT_COLORS[card.suit]
-                          }`}
-                        >
-                          <span className="text-sm sm:text-xl md:text-2xl leading-none">{card.rank}</span>
-                          <span className="text-lg sm:text-2xl md:text-3xl leading-none">{SUIT_SYMBOLS[card.suit]}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex items-center space-x-1 mt-1 opacity-80">
-                      <div className="w-6 h-9 sm:w-8 sm:h-12 rounded-md bg-indigo-950 border border-indigo-700 flex items-center justify-center text-xs text-indigo-300 shadow">🎴</div>
-                      <div className="w-6 h-9 sm:w-8 sm:h-12 rounded-md bg-indigo-950 border border-indigo-700 flex items-center justify-center text-xs text-indigo-300 shadow">🎴</div>
-                    </div>
-                  )}
+        return (
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl space-y-4">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                  <Target className="w-5 h-5" />
                 </div>
-              );
-            })
-          ) : (
-            SIX_MAX_POSITIONS.map((pos) => {
-              const isHero = pos === heroPos;
-              const isVillain = pos === villainPos;
-              const coords = SEAT_POSITIONS_MAP[pos];
-
-              return (
-                <div
-                  key={pos}
-                  style={{ top: coords.top, left: coords.left }}
-                  className="absolute -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center"
-                >
-                  {/* Player Seat Chip Badge */}
-                  <div
-                    className={`px-3 py-1.5 rounded-xl border flex flex-col items-center shadow-xl transition-all ${
-                      isHero
-                        ? 'bg-slate-900 border-amber-400 ring-4 ring-amber-400/40 scale-110'
-                        : isVillain
-                        ? 'bg-slate-900 border-rose-500 ring-2 ring-rose-500/30'
-                        : 'bg-slate-950/80 border-slate-800 opacity-60'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-1">
-                      <span className="font-mono font-black text-xs sm:text-sm text-slate-100">{pos}</span>
-                      {isHero && <span className="text-[10px] bg-amber-400 text-slate-950 font-black px-1.5 py-0.5 rounded">Hero</span>}
-                      {isVillain && <span className="text-[10px] bg-rose-500 text-white font-black px-1.5 py-0.5 rounded">Villain</span>}
-                    </div>
-                    <span className="text-xs font-mono text-slate-300">100 BB</span>
-                  </div>
-
-                  {/* Dealt Hole Cards for Hero or Villain */}
-                  {isHero && (
-                    <div className="flex items-center space-x-1.5 mt-1.5 animate-in fade-in zoom-in-95 duration-200">
-                      {heroCards.map((card, idx) => (
-                        <div
-                          key={idx}
-                          className={`w-11 h-16 sm:w-16 sm:h-24 md:w-20 md:h-28 rounded-xl border-2 border-slate-300 shadow-2xl flex flex-col items-center justify-between p-1 sm:p-2 font-mono font-black select-none ${
-                            SUIT_COLORS[card.suit]
-                          }`}
-                        >
-                          <span className="text-sm sm:text-xl md:text-2xl leading-none">{card.rank}</span>
-                          <span className="text-lg sm:text-2xl md:text-3xl leading-none">{SUIT_SYMBOLS[card.suit]}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {isVillain && (
-                    <div className="flex items-center space-x-1 mt-1 opacity-80">
-                      <div className="w-8 h-12 rounded-lg bg-indigo-950 border border-indigo-700 flex items-center justify-center text-xs text-indigo-300 shadow">🎴</div>
-                      <div className="w-8 h-12 rounded-lg bg-indigo-950 border border-indigo-700 flex items-center justify-center text-xs text-indigo-300 shadow">🎴</div>
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )}
-
-        </div>
-
-        {/* Live Casino Dialogue Feed Banner */}
-        {trainingStage === 'STAGE_5_CASINO_RING' && (
-          <div className="bg-slate-950/90 border border-amber-500/30 p-2.5 rounded-xl my-2 flex items-center space-x-2 text-xs sm:text-sm font-mono text-amber-200 shadow-md">
-            <MessageSquare className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
-            <span className="truncate">{casinoRecentDialogue}</span>
-          </div>
-        )}
-
-        {/* Action Control Deck (iPad & Mobile Optimized) */}
-        <div className="relative z-20 mt-6 pt-4 border-t border-slate-800/80 max-w-2xl mx-auto w-full">
-          {!isEvaluated ? (
-            <div className="space-y-4 text-center">
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 bg-slate-900/90 border border-slate-800 p-2.5 rounded-2xl shadow-md">
-                <span className="text-xs sm:text-sm text-slate-200 font-bold">
-                  当前轮到 Hero ({heroPos}) 决策 | 手牌 [{heroNotation}]:
-                </span>
-                <div className="flex items-center space-x-1.5">
-                  {heroCards.map((c, i) => (
-                    <div
-                      key={i}
-                      className={`w-9 h-13 sm:w-11 sm:h-16 rounded-lg border-2 border-slate-300 shadow-md flex flex-col items-center justify-between p-1 font-mono font-black text-xs sm:text-sm select-none ${
-                        SUIT_COLORS[c.suit]
-                      }`}
-                    >
-                      <span className="leading-none">{c.rank}</span>
-                      <span className="text-sm sm:text-base leading-none">{SUIT_SYMBOLS[c.suit]}</span>
-                    </div>
-                  ))}
+                <div>
+                  <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                    <span>{heroPos} 位置 169 手牌 GTO 掌握度热力阵图</span>
+                    <span className="text-xs font-mono font-bold text-amber-400 bg-amber-950/80 border border-amber-800 px-2 py-0.5 rounded-md">
+                      掌握进度 {masteredPct}%
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    🟢 已掌握 ({mastered}) • 🟡 灰色地带 ({grayZone}) • 🔴 重点错题 ({needsWork}) • ⚪ 未测试 ({untested})
+                  </p>
                 </div>
               </div>
 
-              {/* Action Buttons with Multi-Sizing & All-In Support */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-3">
-                {options.map((opt) => (
+              {/* Drill Mode Controls */}
+              <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-between md:justify-end">
+                <div className="bg-slate-950 p-1 rounded-xl border border-slate-800 flex items-center space-x-1 text-xs">
                   <button
-                    key={opt.action}
-                    onClick={() => handleSelectAction(opt.action)}
-                    className={`py-3.5 px-3 rounded-xl border font-black text-xs sm:text-sm transition-all shadow-lg active:scale-95 cursor-pointer flex flex-col items-center justify-center gap-1 text-center ${
-                      opt.action === 'ALL_IN'
-                        ? 'bg-gradient-to-r from-rose-950 via-rose-900 to-amber-950 hover:from-rose-800 hover:to-amber-700 border-rose-500 text-rose-100 font-black shadow-rose-950/80 ring-2 ring-rose-500/50 scale-[1.02]'
-                        : opt.action === 'CALL'
-                        ? 'bg-emerald-950 hover:bg-emerald-600 border-emerald-500/80 text-emerald-200 hover:text-white shadow-emerald-950/50'
-                        : opt.action === 'FOLD'
-                        ? 'bg-rose-950/80 hover:bg-rose-700 border-rose-800 text-rose-200 hover:text-white'
-                        : opt.action === 'CBET_125' || opt.action === 'CBET_150'
-                        ? 'bg-indigo-950 hover:bg-indigo-600 border-indigo-500/80 text-indigo-200 hover:text-white'
-                        : opt.action === 'RAISE_2' || opt.action === 'RAISE_2_5' || opt.action === 'RAISE_3' || opt.action === 'THREE_BET' || opt.action === 'FOUR_BET'
-                        ? 'bg-amber-950/90 hover:bg-amber-600 border-amber-500/80 text-amber-200 hover:text-white'
-                        : 'bg-slate-900 hover:bg-amber-600 border-slate-700 hover:border-amber-500 text-slate-100 hover:text-white'
+                    onClick={() => setDrillMode('ADAPTIVE')}
+                    className={`px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition-all cursor-pointer ${
+                      drillMode === 'ADAPTIVE'
+                        ? 'bg-amber-500 text-slate-950 font-black shadow-md'
+                        : 'text-slate-400 hover:text-slate-200'
                     }`}
                   >
-                    <span>{opt.label}</span>
+                    <Brain className="w-3.5 h-3.5" />
+                    <span>⚡ 自适应弱点强化</span>
                   </button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4 animate-in fade-in duration-200">
-              
-              {/* Detailed Instant Judgment Card */}
-              <div
-                className={`p-4 rounded-2xl border flex flex-col space-y-3 ${
-                  evalResult?.isOptimal
-                    ? 'bg-emerald-950/90 border-emerald-700 text-emerald-200 shadow-lg shadow-emerald-950/50'
-                    : 'bg-rose-950/90 border-rose-700 text-rose-200 shadow-lg shadow-rose-950/50'
-                }`}
-              >
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div className="flex items-center space-x-3">
-                    {evalResult?.isOptimal ? (
-                      <CheckCircle2 className="w-7 h-7 text-emerald-400 shrink-0" />
-                    ) : (
-                      <AlertCircle className="w-7 h-7 text-rose-400 shrink-0" />
-                    )}
-                    <div>
-                      <h4 className="font-black text-sm sm:text-base flex items-center gap-2">
-                        <span>{evalResult?.isOptimal ? '当场判定：✅ 决策正确' : '当场判定：❌ 决策偏离 (漏水)'}</span>
-                        <span className="text-xs px-2 py-0.5 rounded font-mono font-bold bg-slate-900/80 border border-slate-700">
-                          {evalResult?.isOptimal ? 'EV 0 mBB' : `EV 损耗 -${evalResult?.evLossMBB} mBB`}
-                        </span>
-                      </h4>
-                      <p className="text-xs opacity-90 font-mono mt-0.5">{evalResult?.message}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center space-x-2 shrink-0">
-                    <button
-                      onClick={handleRequestAudit}
-                      disabled={aiAuditLoading}
-                      className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-purple-900/90 hover:bg-purple-800 border border-purple-600 text-purple-200 text-xs font-bold transition-all cursor-pointer"
-                    >
-                      <Sparkles className="w-4 h-4 text-purple-300" />
-                      <span>{aiAuditLoading ? 'Gemini 审计中...' : 'Gemini AI 深入诊所'}</span>
-                    </button>
-
-                    {/* Multi-street Next Card Progression Buttons */}
-                    {scenarioMode === 'POSTFLOP_MULTI_STREET' && street === 'FLOP' && (
-                      <button
-                        onClick={dealTurnCard}
-                        className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-all cursor-pointer shadow-md"
-                      >
-                        <span>进入转牌 Turn 🎴</span>
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-                    )}
-
-                    {scenarioMode === 'POSTFLOP_MULTI_STREET' && street === 'TURN' && (
-                      <button
-                        onClick={dealRiverCard}
-                        className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all cursor-pointer shadow-md"
-                      >
-                        <span>进入河牌 River 🎴</span>
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-                    )}
-
-                    <button
-                      onClick={dealNewHand}
-                      className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black transition-all cursor-pointer shadow-md"
-                    >
-                      <span>下一发手牌</span>
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => setDrillMode('RANDOM')}
+                    className={`px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition-all cursor-pointer ${
+                      drillMode === 'RANDOM'
+                        ? 'bg-slate-700 text-white'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>🎲 纯随机发牌</span>
+                  </button>
                 </div>
 
-                {/* Solver Action Frequency Distribution Bars */}
-                <div className="pt-2 border-t border-slate-800/60 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {options.map((opt) => {
-                    const isChosen = userAction === opt.action;
-                    const pct = Math.round(opt.freq * 100);
-                    return (
-                      <div
-                        key={opt.action}
-                        className={`p-2 rounded-lg border font-mono text-xs flex flex-col justify-between ${
-                          isChosen
-                            ? 'bg-slate-900 border-amber-400/80 ring-2 ring-amber-400/30'
-                            : 'bg-slate-950/60 border-slate-800'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-slate-200">
-                            {opt.label} {isChosen && <span className="text-amber-400 font-black">(你的选择)</span>}
-                          </span>
-                          <span className="font-bold text-amber-400">{pct}%</span>
-                        </div>
-                        <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mt-1.5">
-                          <div
-                            className={`h-full ${opt.action === 'CALL' ? 'bg-emerald-500' : 'bg-amber-500'}`}
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                <button
+                  onClick={() => setShowMasteryMatrix(!showMasteryMatrix)}
+                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition-all cursor-pointer flex items-center space-x-1"
+                >
+                  <Layers className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{showMasteryMatrix ? '收起 169 矩阵' : '展开 169 矩阵热力图'}</span>
+                </button>
+              </div>
+            </div>
 
-                {/* Immediate Strategic Explanation & Tactical Advice Box */}
-                {evalResult?.explanation && (
-                  <div className="pt-3 border-t border-slate-800/80 space-y-2.5 text-xs text-slate-100">
-                    <div className="flex items-center space-x-2 text-amber-300 font-bold">
-                      <Brain className="w-4 h-4 text-amber-400 shrink-0" />
-                      <span>GTO 决策建议与原理详细说明:</span>
-                    </div>
+            {/* Segmented Mastery Bar */}
+            <div className="space-y-1.5">
+              <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden flex border border-slate-800 p-0.5">
+                <div style={{ width: `${(mastered / 169) * 100}%` }} className="bg-emerald-500 h-full rounded-l-full transition-all" title={`已掌握 ${mastered} 手`} />
+                <div style={{ width: `${(grayZone / 169) * 100}%` }} className="bg-amber-400 h-full transition-all" title={`灰色地带 ${grayZone} 手`} />
+                <div style={{ width: `${(needsWork / 169) * 100}%` }} className="bg-rose-500 h-full transition-all" title={`重点错题 ${needsWork} 手`} />
+                <div style={{ width: `${(untested / 169) * 100}%` }} className="bg-slate-800 h-full rounded-r-full transition-all" title={`未测试 ${untested} 手`} />
+              </div>
+              <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500" /> 🟢 已掌握 (准确率≥80%且≥2次): <strong className="text-emerald-400">{mastered}</strong></span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400" /> 🟡 灰色地带 (准确率40-79%): <strong className="text-amber-400">{grayZone}</strong></span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-rose-500" /> 🔴 尚未掌握/频繁做错: <strong className="text-rose-400">{needsWork}</strong></span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-slate-700" /> ⚪ 未测试: <strong className="text-slate-400">{untested}</strong></span>
+              </div>
+            </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-slate-200 font-sans">
-                      <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1">
-                        <span className="text-amber-400 font-bold block">【决策诊断与战术原理】:</span>
-                        <p className="leading-relaxed opacity-90">{evalResult.explanation.reasoning}</p>
-                      </div>
-                      <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1">
-                        <span className="text-cyan-400 font-bold block">【范围与阻挡效应分析】:</span>
-                        <p className="leading-relaxed opacity-90">{evalResult.explanation.rangeLogic}</p>
-                      </div>
-                    </div>
+            {/* Interactive 13x13 Mastery Grid */}
+            {showMasteryMatrix && (
+              <div className="overflow-x-auto pt-2 animate-in fade-in duration-200">
+                <div className="inline-block min-w-[550px] w-full">
+                  <div className="grid grid-cols-13 gap-1 text-center font-mono">
+                    {matrixHandNames.map((row, rIdx) =>
+                      row.map((handName, cIdx) => {
+                        const rec = handMasteryMap[`${heroPos}_${handName}`];
+                        const st = getHandMasteryStatus(rec);
+                        const isCurrentHand = heroNotation === handName;
 
-                    <div className="p-2.5 rounded-xl bg-amber-950/60 border border-amber-500/40 text-amber-200 font-medium leading-relaxed">
-                      {evalResult.explanation.actionTip}
-                    </div>
+                        let colorClass = 'bg-slate-950/70 border-slate-800/80 text-slate-500 hover:border-slate-600';
+                        if (st === 'MASTERED') {
+                          colorClass = 'bg-emerald-950/90 border-emerald-600/80 text-emerald-300 font-bold hover:bg-emerald-800/90';
+                        } else if (st === 'GRAY_ZONE') {
+                          colorClass = 'bg-amber-950/90 border-amber-600/80 text-amber-300 font-bold hover:bg-amber-800/90';
+                        } else if (st === 'NEEDS_WORK') {
+                          colorClass = 'bg-rose-950/90 border-rose-600/80 text-rose-300 font-bold hover:bg-rose-800/90 animate-pulse';
+                        }
+
+                        const trials = rec?.trials || 0;
+                        const acc = trials > 0 ? Math.round((rec.correct / trials) * 100) : 0;
+
+                        return (
+                          <button
+                            key={handName}
+                            onClick={() => drillSpecificHand(handName)}
+                            title={`手牌 ${handName} | 测试 ${trials} 次 | 准确率 ${acc}% | 状态: ${st}`}
+                            className={`p-1.5 sm:p-2 rounded-md border text-[10px] sm:text-xs transition-all relative cursor-pointer flex flex-col items-center justify-center ${colorClass} ${
+                              isCurrentHand ? 'ring-2 ring-amber-400 ring-offset-1 ring-offset-slate-900 z-10 scale-105' : ''
+                            }`}
+                          >
+                            <span className="leading-none">{handName}</span>
+                            {trials > 0 && (
+                              <span className="text-[9px] opacity-80 mt-0.5">
+                                {acc}%
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })
+                    )}
                   </div>
-                )}
-              </div>
-
-              {/* Frequencies Bar Breakdown */}
-              <div className="bg-slate-900 border border-slate-800 p-3 rounded-xl text-xs space-y-2">
-                <div className="text-slate-400 font-medium">GTO Solver 概率构成:</div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {options.map((opt) => (
-                    <div
-                      key={opt.action}
-                      className={`p-2 rounded-lg border flex justify-between items-center ${
-                        userAction === opt.action
-                          ? 'border-amber-500 bg-slate-800 font-bold'
-                          : 'border-slate-800 bg-slate-950'
-                      }`}
-                    >
-                      <span className="text-slate-300">{opt.label}:</span>
-                      <span className="font-mono text-emerald-400 font-bold">{(opt.freq * 100).toFixed(1)}%</span>
-                    </div>
-                  ))}
                 </div>
+                <p className="text-[11px] text-slate-400 text-center mt-2 font-mono">
+                  💡 点击矩阵中任意手牌格，可立即发起对该手牌的单手独训强攻！
+                </p>
               </div>
-
-            </div>
-          )}
-        </div>
-
-      </div>
-
-      {/* Gemini AI Inline Audit Output */}
-      {aiAuditResult && (
-        <div className="bg-slate-900 border border-purple-800/80 rounded-2xl p-6 shadow-2xl space-y-4 animate-in fade-in duration-300">
-          <div className="flex items-center space-x-3 border-b border-purple-900/50 pb-3">
-            <Sparkles className="w-5 h-5 text-purple-400" />
-            <div>
-              <h3 className="text-sm font-bold text-slate-100">Gemini 3.6 Flash GTO 实战牌桌剖析</h3>
-              <p className="text-xs text-slate-400">基于 Range Advantage & Blockers 的深度求解分析</p>
-            </div>
+            )}
           </div>
-
-          <div className="text-xs text-slate-300 leading-relaxed space-y-3">
-            <p className="bg-slate-950 p-4 rounded-xl border border-slate-800">{aiAuditResult.analysis}</p>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-                <strong className="text-amber-400 block mb-1">范围优势:</strong>
-                <span>{aiAuditResult.keyConcepts.rangeAdvantage}</span>
-              </div>
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-                <strong className="text-cyan-400 block mb-1">阻挡牌效应:</strong>
-                <span>{aiAuditResult.keyConcepts.blockerEffect}</span>
-              </div>
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-                <strong className="text-emerald-400 block mb-1">EV 与决策理由:</strong>
-                <span>{aiAuditResult.keyConcepts.evComparison}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Stage Summary & Executive Report Modal */}
       {showStageSummaryModal && (
