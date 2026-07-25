@@ -11,10 +11,10 @@ export const SUIT_SYMBOLS: Record<CardSuit, string> = {
 };
 
 export const SUIT_COLORS: Record<CardSuit, string> = {
-  s: 'text-slate-200 bg-slate-800/80',
-  h: 'text-red-500 bg-red-950/40',
-  d: 'text-blue-400 bg-blue-950/40',
-  c: 'text-emerald-400 bg-emerald-950/40',
+  s: 'text-slate-950 bg-white border-slate-300 shadow-md', // Spades: Black on White
+  h: 'text-red-600 bg-white border-slate-300 shadow-md',   // Hearts: Vibrant Red on White
+  d: 'text-blue-600 bg-white border-slate-300 shadow-md',  // Diamonds: Vibrant Blue on White
+  c: 'text-emerald-700 bg-white border-slate-300 shadow-md', // Clubs: Vibrant Green on White
 };
 
 // Generate 13x13 matrix hand names

@@ -1785,10 +1785,10 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
       </div>
 
       {/* Realistic Oval Poker Table Canvas */}
-      <div className="relative bg-gradient-to-b from-slate-900 via-slate-950 to-slate-950 border border-slate-800 rounded-3xl p-4 sm:p-8 shadow-2xl overflow-hidden min-h-[480px] sm:min-h-[560px] flex flex-col justify-between">
+      <div className="relative bg-gradient-to-b from-slate-900 via-slate-950 to-slate-950 border border-slate-800 rounded-3xl p-3 sm:p-6 md:p-8 shadow-2xl overflow-visible min-h-[540px] sm:min-h-[640px] flex flex-col justify-between">
         
         {/* Table Felt Green Oval Container */}
-        <div className="relative w-full max-w-4xl mx-auto aspect-[16/9] bg-gradient-to-tr from-emerald-950 via-emerald-900 to-teal-950 rounded-[120px] sm:rounded-[180px] border-[12px] sm:border-[16px] border-amber-950/80 shadow-[inset_0_0_60px_rgba(0,0,0,0.8)] flex flex-col items-center justify-center p-4">
+        <div className="relative w-full max-w-4xl mx-auto aspect-[16/9] bg-gradient-to-tr from-emerald-950 via-emerald-900 to-teal-950 rounded-[120px] sm:rounded-[180px] border-[12px] sm:border-[16px] border-amber-950/80 shadow-[inset_0_0_60px_rgba(0,0,0,0.8)] flex flex-col items-center justify-center p-4 my-2">
           
           {/* Inner Table Trim Line */}
           <div className="absolute inset-4 rounded-[100px] sm:rounded-[150px] border border-emerald-500/20 pointer-events-none" />
@@ -1797,27 +1797,27 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
           <div className="relative z-10 flex flex-col items-center justify-center space-y-2">
             
             {/* Main Pot Chips Badge */}
-            <div className="px-4 py-1 rounded-full bg-slate-950/90 border border-amber-500/60 text-amber-300 font-mono text-xs sm:text-sm font-bold shadow-xl flex items-center gap-1.5">
+            <div className="px-4 py-1.5 rounded-full bg-slate-950/95 border border-amber-500/80 text-amber-300 font-mono text-sm sm:text-base font-bold shadow-2xl flex items-center gap-2">
               <span>🪙 底池 (POT):</span>
-              <span className="text-emerald-400 font-black">{potSize} BB</span>
+              <span className="text-emerald-400 font-black text-base sm:text-lg">{potSize} BB</span>
             </div>
 
             {/* Community Board Cards */}
-            <div className="flex items-center space-x-2 my-1">
+            <div className="flex items-center space-x-2 sm:space-x-3 my-2">
               {boardCards.length > 0 ? (
                 boardCards.map((card, idx) => (
                   <div
                     key={idx}
-                    className={`w-11 h-16 sm:w-14 sm:h-20 rounded-lg bg-slate-900 border-2 border-slate-200 shadow-2xl flex flex-col items-center justify-between p-1.5 font-mono font-bold text-sm sm:text-lg ${
+                    className={`w-13 h-19 sm:w-20 sm:h-28 md:w-24 md:h-34 rounded-xl border-2 border-slate-300 shadow-2xl flex flex-col items-center justify-between p-1.5 sm:p-2.5 font-mono font-black select-none transition-all hover:scale-105 ${
                       SUIT_COLORS[card.suit]
                     }`}
                   >
-                    <span>{card.rank}</span>
-                    <span className="text-base sm:text-xl">{SUIT_SYMBOLS[card.suit]}</span>
+                    <span className="text-lg sm:text-2xl md:text-3xl leading-none">{card.rank}</span>
+                    <span className="text-2xl sm:text-3xl md:text-4xl leading-none">{SUIT_SYMBOLS[card.suit]}</span>
                   </div>
                 ))
               ) : (
-                <div className="text-emerald-200/60 italic text-xs py-4 font-mono">Preflop 翻前开局阶段...</div>
+                <div className="text-emerald-200/80 italic text-xs sm:text-sm py-4 font-mono font-medium">Preflop 翻前开局阶段...</div>
               )}
             </div>
           </div>
@@ -1860,35 +1860,35 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
                   {/* Player Seat Card Badge */}
                   <div
                     className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl border flex flex-col items-center shadow-xl transition-all ${seat.bgColor} ${seat.borderColor} ${
-                      isHeroSeat ? 'ring-4 ring-amber-400/40 scale-110' : 'opacity-90'
+                      isHeroSeat ? 'ring-4 ring-amber-400/50 scale-110' : 'opacity-90'
                     }`}
                   >
                     <div className="flex items-center space-x-1">
                       <span className="text-xs sm:text-sm">{seat.avatar}</span>
-                      <span className="font-bold text-[11px] sm:text-xs text-white whitespace-nowrap">{seat.name}</span>
+                      <span className="font-bold text-xs text-white whitespace-nowrap">{seat.name}</span>
                     </div>
-                    <span className="text-[9px] font-mono text-slate-300 opacity-90">{seat.styleLabel}</span>
+                    <span className="text-[10px] font-mono text-slate-300 opacity-90">{seat.styleLabel}</span>
                   </div>
 
                   {/* Dealt Hole Cards */}
                   {isHeroSeat ? (
-                    <div className="flex items-center space-x-1 mt-1 animate-in fade-in zoom-in-95 duration-200">
+                    <div className="flex items-center space-x-1.5 mt-1.5 animate-in fade-in zoom-in-95 duration-200">
                       {heroCards.map((card, idx) => (
                         <div
                           key={idx}
-                          className={`w-9 h-13 sm:w-11 sm:h-16 rounded bg-slate-900 border border-slate-200 shadow-xl flex flex-col items-center justify-between p-1 font-mono font-bold text-xs sm:text-sm ${
+                          className={`w-11 h-16 sm:w-16 sm:h-24 md:w-20 md:h-28 rounded-xl border-2 border-slate-300 shadow-2xl flex flex-col items-center justify-between p-1 sm:p-2 font-mono font-black select-none ${
                             SUIT_COLORS[card.suit]
                           }`}
                         >
-                          <span>{card.rank}</span>
-                          <span className="text-sm">{SUIT_SYMBOLS[card.suit]}</span>
+                          <span className="text-sm sm:text-xl md:text-2xl leading-none">{card.rank}</span>
+                          <span className="text-lg sm:text-2xl md:text-3xl leading-none">{SUIT_SYMBOLS[card.suit]}</span>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="flex items-center space-x-0.5 mt-1 opacity-70">
-                      <div className="w-5 h-8 rounded bg-slate-900 border border-slate-700 flex items-center justify-center text-[9px] text-slate-400">🎴</div>
-                      <div className="w-5 h-8 rounded bg-slate-900 border border-slate-700 flex items-center justify-center text-[9px] text-slate-400">🎴</div>
+                    <div className="flex items-center space-x-1 mt-1 opacity-80">
+                      <div className="w-6 h-9 sm:w-8 sm:h-12 rounded-md bg-indigo-950 border border-indigo-700 flex items-center justify-center text-xs text-indigo-300 shadow">🎴</div>
+                      <div className="w-6 h-9 sm:w-8 sm:h-12 rounded-md bg-indigo-950 border border-indigo-700 flex items-center justify-center text-xs text-indigo-300 shadow">🎴</div>
                     </div>
                   )}
                 </div>
@@ -1910,32 +1910,32 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
                   <div
                     className={`px-3 py-1.5 rounded-xl border flex flex-col items-center shadow-xl transition-all ${
                       isHero
-                        ? 'bg-slate-900 border-amber-400 ring-4 ring-amber-400/30 scale-110'
+                        ? 'bg-slate-900 border-amber-400 ring-4 ring-amber-400/40 scale-110'
                         : isVillain
-                        ? 'bg-slate-900 border-rose-500 ring-2 ring-rose-500/20'
+                        ? 'bg-slate-900 border-rose-500 ring-2 ring-rose-500/30'
                         : 'bg-slate-950/80 border-slate-800 opacity-60'
                     }`}
                   >
                     <div className="flex items-center space-x-1">
-                      <span className="font-mono font-black text-xs text-slate-100">{pos}</span>
-                      {isHero && <span className="text-[10px] bg-amber-400 text-slate-950 font-bold px-1 rounded">Hero</span>}
-                      {isVillain && <span className="text-[10px] bg-rose-500 text-white font-bold px-1 rounded">Villain</span>}
+                      <span className="font-mono font-black text-xs sm:text-sm text-slate-100">{pos}</span>
+                      {isHero && <span className="text-[10px] bg-amber-400 text-slate-950 font-black px-1.5 py-0.5 rounded">Hero</span>}
+                      {isVillain && <span className="text-[10px] bg-rose-500 text-white font-black px-1.5 py-0.5 rounded">Villain</span>}
                     </div>
-                    <span className="text-[10px] font-mono text-slate-400">100 BB</span>
+                    <span className="text-xs font-mono text-slate-300">100 BB</span>
                   </div>
 
                   {/* Dealt Hole Cards for Hero or Villain */}
                   {isHero && (
-                    <div className="flex items-center space-x-1 mt-1 animate-in fade-in zoom-in-95 duration-200">
+                    <div className="flex items-center space-x-1.5 mt-1.5 animate-in fade-in zoom-in-95 duration-200">
                       {heroCards.map((card, idx) => (
                         <div
                           key={idx}
-                          className={`w-9 h-13 sm:w-11 sm:h-16 rounded bg-slate-900 border border-slate-200 shadow-xl flex flex-col items-center justify-between p-1 font-mono font-bold text-xs sm:text-sm ${
+                          className={`w-11 h-16 sm:w-16 sm:h-24 md:w-20 md:h-28 rounded-xl border-2 border-slate-300 shadow-2xl flex flex-col items-center justify-between p-1 sm:p-2 font-mono font-black select-none ${
                             SUIT_COLORS[card.suit]
                           }`}
                         >
-                          <span>{card.rank}</span>
-                          <span className="text-sm">{SUIT_SYMBOLS[card.suit]}</span>
+                          <span className="text-sm sm:text-xl md:text-2xl leading-none">{card.rank}</span>
+                          <span className="text-lg sm:text-2xl md:text-3xl leading-none">{SUIT_SYMBOLS[card.suit]}</span>
                         </div>
                       ))}
                     </div>
@@ -1943,8 +1943,8 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
 
                   {isVillain && (
                     <div className="flex items-center space-x-1 mt-1 opacity-80">
-                      <div className="w-7 h-10 rounded bg-indigo-950 border border-indigo-700 flex items-center justify-center text-[10px] text-indigo-400 font-mono">🎴</div>
-                      <div className="w-7 h-10 rounded bg-indigo-950 border border-indigo-700 flex items-center justify-center text-[10px] text-indigo-400 font-mono">🎴</div>
+                      <div className="w-8 h-12 rounded-lg bg-indigo-950 border border-indigo-700 flex items-center justify-center text-xs text-indigo-300 shadow">🎴</div>
+                      <div className="w-8 h-12 rounded-lg bg-indigo-950 border border-indigo-700 flex items-center justify-center text-xs text-indigo-300 shadow">🎴</div>
                     </div>
                   )}
                 </div>
@@ -1956,30 +1956,42 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
 
         {/* Live Casino Dialogue Feed Banner */}
         {trainingStage === 'STAGE_5_CASINO_RING' && (
-          <div className="bg-slate-950/90 border border-amber-500/30 p-2.5 rounded-xl my-2 flex items-center space-x-2 text-xs font-mono text-amber-200 shadow-md">
+          <div className="bg-slate-950/90 border border-amber-500/30 p-2.5 rounded-xl my-2 flex items-center space-x-2 text-xs sm:text-sm font-mono text-amber-200 shadow-md">
             <MessageSquare className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
             <span className="truncate">{casinoRecentDialogue}</span>
           </div>
         )}
 
-        {/* Action Control Deck (iPad Optimized) */}
+        {/* Action Control Deck (iPad & Mobile Optimized) */}
         <div className="relative z-20 mt-6 pt-4 border-t border-slate-800/80 max-w-2xl mx-auto w-full">
           {!isEvaluated ? (
-            <div className="space-y-3 text-center">
-              <div className="text-xs text-slate-300 font-semibold flex items-center justify-center gap-2">
-                <span>当前轮到 Hero ({heroPos}) 决策 | 手牌:</span>
-                <span className="font-mono font-bold text-amber-400 text-sm bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-                  {heroNotation}
+            <div className="space-y-4 text-center">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 bg-slate-900/90 border border-slate-800 p-2.5 rounded-2xl shadow-md">
+                <span className="text-xs sm:text-sm text-slate-200 font-bold">
+                  当前轮到 Hero ({heroPos}) 决策 | 手牌 [{heroNotation}]:
                 </span>
+                <div className="flex items-center space-x-1.5">
+                  {heroCards.map((c, i) => (
+                    <div
+                      key={i}
+                      className={`w-9 h-13 sm:w-11 sm:h-16 rounded-lg border-2 border-slate-300 shadow-md flex flex-col items-center justify-between p-1 font-mono font-black text-xs sm:text-sm select-none ${
+                        SUIT_COLORS[c.suit]
+                      }`}
+                    >
+                      <span className="leading-none">{c.rank}</span>
+                      <span className="text-sm sm:text-base leading-none">{SUIT_SYMBOLS[c.suit]}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {/* Action Buttons with Multi-Sizing & All-In Support */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-3">
                 {options.map((opt) => (
                   <button
                     key={opt.action}
                     onClick={() => handleSelectAction(opt.action)}
-                    className={`py-3 px-2.5 rounded-xl border font-bold text-xs transition-all shadow-lg active:scale-95 cursor-pointer flex flex-col items-center justify-center gap-0.5 text-center ${
+                    className={`py-3.5 px-3 rounded-xl border font-black text-xs sm:text-sm transition-all shadow-lg active:scale-95 cursor-pointer flex flex-col items-center justify-center gap-1 text-center ${
                       opt.action === 'ALL_IN'
                         ? 'bg-gradient-to-r from-rose-950 via-rose-900 to-amber-950 hover:from-rose-800 hover:to-amber-700 border-rose-500 text-rose-100 font-black shadow-rose-950/80 ring-2 ring-rose-500/50 scale-[1.02]'
                         : opt.action === 'CALL'
