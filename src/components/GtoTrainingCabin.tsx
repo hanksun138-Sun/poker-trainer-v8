@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Position, ActionType, UserProfile, GtoAuditResponse, CardRank, CardSuit } from '../types/poker';
-import { drawRandomCardCombo, formatCardString, getHandNotationFromCards, get169HandNames, SUIT_COLORS, SUIT_SYMBOLS, FLOP_BOARDS, TEXAS_SOLVER_A_DRY_BTNVsBB, DEFAULT_RANGE_CONVERTER_PROFILE } from '../data/pokerData';
+import { drawRandomCardCombo, formatCardString, getHandNotationFromCards, get169HandNames, SUIT_COLORS, SUIT_SYMBOLS, FLOP_BOARDS, TEXAS_SOLVER_A_DRY_BTNVsBB, DEFAULT_RANGE_CONVERTER_PROFILE, getGtoPreflopStrategyForHand } from '../data/pokerData';
 import { Zap, Sparkles, AlertCircle, CheckCircle2, ChevronRight, Tablet, BarChart3, RotateCcw, Target, Brain, RefreshCw, Layers, Sliders, Check, Trophy, Users, ShieldAlert, Award, MessageSquare, Dices, DollarSign, Crown, History, Eye, Flame, Filter, HelpCircle } from 'lucide-react';
 
 interface GtoTrainingCabinProps {
@@ -113,38 +113,68 @@ export function generateGtoDetailedExplanation(
   boardCards: Card[]
 ): { reasoning: string; rangeLogic: string; actionTip: string } {
   const boardStr = boardCards.map(formatCardString).join(' ');
+  const chosenFreq = chosenOption ? Math.round(chosenOption.freq * 100) : 0;
+  const bestFreq = Math.round(bestOption.freq * 100);
+  const isPrimaryOptimal = chosenOption?.action === bestOption.action;
+  const isMixedOptimal = isOptimal && !isPrimaryOptimal;
+
+  // Accurately classify hand strength without templated hallucination
+  const isPair = heroNotation.length === 2;
+  const isSuited = heroNotation.endsWith('s');
+  const r1 = heroNotation[0] as CardRank;
+  const r2 = heroNotation[1] as CardRank;
+  const r1Val = 14 - RANKS.indexOf(r1);
+  const r2Val = 14 - RANKS.indexOf(r2);
+
+  const isPremium = (isPair && r1Val >= 12) || (isSuited && r1Val === 14 && r2Val >= 13);
+  const isBorderlineOrWeak = (!isPair && !isSuited && r1Val <= 10) || (r1Val <= 8 && r2Val <= 7);
+
+  if (isMixedOptimal && chosenOption) {
+    // Valid Mixed Strategy Explanation (0 mBB EV Loss)
+    let reasoning = `在当前 [${heroPos}] 位置下，手牌 [${heroNotation}] 处于 GTO 混合策略边界（包含 ${bestFreq}% ${bestOption.label} 与 ${chosenFreq}% ${chosenOption.label}）。你选择的 [${chosenOption.label}] 完全属于 GTO 合法混合分支。`;
+    let rangeLogic = `在博弈论 (GTO Solver) 树中，混合策略分支之间的期望值 (EV) 是完全等价的（EV 损耗为 0 mBB）。选用 [${chosenOption.label}] 可保持总体范围平衡与反剥削防御。`;
+    let actionTip = `💡 混合策略提示：实战中对于此类边界手牌，执行 [${chosenOption.label}] 可以有效规避高波动的盲注 3-Bet 挤压，完全不属于漏水决策。`;
+
+    if (userAction === 'FOLD') {
+      actionTip = `💡 弃牌要领：对于 [${heroNotation}] 这类缺乏同花/高牌统治力的边缘组合，选择弃牌 (Fold) 避免陷入被统治困境，是极具纪律性的实战好决策。`;
+    }
+
+    return { reasoning, rangeLogic, actionTip };
+  }
 
   if (isOptimal) {
-    let reasoning = `在当前 [${heroPos}] 位置面对 [${villainPos}] 的场景下，手牌 [${heroNotation}] 选择 [${chosenOption?.label || userAction}] 是 GTO Solver 的核心正 EV 决策。`;
+    let reasoning = `在当前 [${heroPos}] 位置面对 [${villainPos}] 的场景下，手牌 [${heroNotation}] 选择 [${chosenOption?.label || userAction}] 是 GTO Solver 的核心正 EV 决策 (${bestFreq}% 主导频率)。`;
     let rangeLogic = `该决策完全契合 [${heroPos}] 位的范围构建原理。在 ${boardStr ? `牌面 [${boardStr}]` : '翻前'} 保持该动作频率可最大化积累底池期望值。`;
     let actionTip = `💡 核心要领：实战中请坚决贯彻该决策尺寸与频率，切勿因恐惧防守或过于急躁而随意偏离。`;
 
     if (stage === 'STAGE_1_PREFLOP') {
       if (scenario === 'PREFLOP_RFI') {
-        reasoning = `手牌 [${heroNotation}] 处于 [${heroPos}] 位的标准 Open Range 前列。选择加注入局能有效榨取后位盲注，建立底池控制权。`;
-        rangeLogic = `在 6-Max 中，[${heroPos}] 位的加注范围拥有强劲的胜率 (Equity) 支撑，阻挡了对手的 3-Bet 挤压。`;
-        actionTip = `💡 翻前指导：保持标准加注尺寸 (2.5BB)，遇到 3-Bet 时根据其同花/对子潜能决定 Call 或 4-Bet。`;
+        reasoning = `手牌 [${heroNotation}] 处于 [${heroPos}] 位的标准 Open Range 中。选择加注入局能有效榨取盲注，建立底池控制权。`;
+        rangeLogic = `在 6-Max 中，[${heroPos}] 位的加注范围拥有强劲的胜率或阻挡效应支撑。`;
+        actionTip = `💡 翻前指导：保持标准加注尺寸，遇到 3-Bet 时根据其同花/对子潜能决定 Call 或 4-Bet。`;
       } else if (scenario === 'PREFLOP_BB_DEFENSE') {
         reasoning = `BB 位面对 [${villainPos}] 的 Open，手牌 [${heroNotation}] 具备极佳的底池赔率与防守价值。选择 [${chosenOption?.label || userAction}] 完美捍卫了盲注。`;
-        rangeLogic = `盲注防守范围需要平衡平跟 (Call) 与 3-Bet 反击。此手牌在当前组合下属于高频正 EV 防守牌。`;
-        actionTip = `💡 盲注防守要领：不要盲目 Fold 掉具备同花/顺子潜能的边缘牌，通过合理平跟控池能大幅降低盲注消耗率。`;
+        rangeLogic = `盲注防守范围需要平衡平跟 (Call) 与 3-Bet 反击。此手牌在当前组合下属于正 EV 防守牌。`;
+        actionTip = `💡 盲注防守要领：通过合理平跟/3-Bet 捍卫底池，能大幅降低盲注消耗率。`;
       }
     } else if (stage === 'STAGE_2_FLOP') {
-      reasoning = `在翻牌面 [${boardStr}] 上，Hero 拥有显著的范围优势 (Range Advantage)。下注 33% Pot 小注能够以低成本对 Villain 的范围施加全盘压力。`;
-      rangeLogic = `干燥/高牌面允许全范围小注下注 (High Frequency C-Bet)。Villain 缺乏足够强度的范围抵抗，必须弃掉大量未成牌。`;
-      actionTip = `💡 翻牌圈技巧：在干燥面上不要过度使用 75% 重注，33% 小注具有更优的性价比和范围保护能力。`;
+      reasoning = `在翻牌面 [${boardStr}] 上，Hero 拥有显著的范围优势。下注 33% Pot 小注能够以低成本对 Villain 的范围施加全盘压力。`;
+      rangeLogic = `干燥/高牌面允许全范围小注下注 (High Frequency C-Bet)。Villain 缺乏足够强度的范围抵抗。`;
+      actionTip = `💡 翻牌圈技巧：在干燥面上 33% 小注具有更优的性价比和范围保护能力。`;
     }
 
     return { reasoning, rangeLogic, actionTip };
   } else {
-    // Suboptimal or Wrong Action
-    let reasoning = `在当前场景下，你的选择 [${chosenOption?.label || userAction}] 偏离了 Solver 的主导策略。手牌 [${heroNotation}] 在 [${heroPos}] 位属于强力加注范围，建议选用 [${bestOption.label}]。`;
-    let rangeLogic = `GTO Solver 推荐主导动作 [${bestOption.label}] (推荐频率 ${(bestOption.freq * 100).toFixed(0)}%)。`;
-    let actionTip = `💡 避坑建议：请注意评估手牌的阻挡效应与范围优势，避免做出偏离 GTO 的保守或随意弃牌动作。`;
+    // Suboptimal or Pure Blunder
+    let handTypeLabel = isPremium ? '高胜率强牌' : (isBorderlineOrWeak ? '边缘投机手牌' : '标准范围手牌');
+    
+    let reasoning = `在当前场景下，你的选择 [${chosenOption?.label || userAction}] 偏离了 Solver 的主导策略。手牌 [${heroNotation}] 建议选用 [${bestOption.label}] (${bestFreq}% 推荐)。`;
+    let rangeLogic = `GTO Solver 推荐主导动作 [${bestOption.label}]。选用的动作在策略树中无有效频率。`;
+    let actionTip = `💡 避坑建议：请注意评估手牌的阻挡效应与范围优势，避免做出偏离 GTO 的动作。`;
 
     if (userAction === 'FOLD') {
-      reasoning = `手牌 [${heroNotation}] 处于 [${heroPos}] 位的加注范围，直接弃牌 (Fold) 放弃了正 EV 入局机会，属于过度弃牌 (Over-folding) 漏洞。`;
-      rangeLogic = `如果将此类高胜率手牌 Fold 掉，你的整个加注/防守范围将被对手无脑剥削 (Exploit)。`;
+      reasoning = `手牌 [${heroNotation}] 处于 [${heroPos}] 位的正 EV 加注范围，直接弃牌放弃了入局机会。`;
+      rangeLogic = `如果将此类${handTypeLabel}过于保守地 Fold 掉，你的整个加注/防守范围将被对手过度剥削 (Exploit)。`;
       actionTip = `💡 修正方案：请坚决使用 [${bestOption.label}] 加注入局，建立底池主动权。`;
     } else if (userAction === 'CALL' && stage === 'STAGE_1_PREFLOP') {
       reasoning = `在翻前 [${heroPos}] 位置平跟 (Limp/Flat) 容易将底池主动权让给后位玩家，陷入被挤压加注 (Squeeze) 的被动局面。`;
@@ -498,11 +528,10 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
   // Generate normalized, noise-free GTO action options summing to EXACTLY 1.0 (100%)
   const getGtoActionOptions = () => {
     if (scenarioMode === 'PREFLOP_RFI') {
-      const positionMap = DEFAULT_RANGE_CONVERTER_PROFILE.matrixData[heroPos] || {};
-      const freqs = positionMap[heroNotation] || { raise2_5: 0.85, fold: 0.15 };
+      const freqs = getGtoPreflopStrategyForHand(heroPos, heroNotation);
 
       if (heroPos === 'SB') {
-        const raiseFreq = freqs.raise3 || 0.35;
+        const raiseFreq = freqs.raise3 !== undefined ? freqs.raise3 : (freqs.raise2_5 || 0.35);
         const callFreq = freqs.call || 0.25;
         const foldFreq = Math.max(0, 1.0 - (raiseFreq + callFreq));
         return [
@@ -512,9 +541,9 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
         ];
       }
 
-      // Pure 100BB Unopened Pot RFI options (No 3% Limp / 2% All-In noise)
-      const raiseFreq = freqs.raise2_5 !== undefined ? freqs.raise2_5 : 0.85;
-      const foldFreq = Math.max(0, 1.0 - raiseFreq);
+      // Pure 100BB Unopened Pot RFI options
+      const raiseFreq = freqs.raise2_5 !== undefined ? freqs.raise2_5 : (freqs.raise3 || 0.0);
+      const foldFreq = freqs.fold !== undefined ? freqs.fold : Math.max(0, 1.0 - raiseFreq);
 
       return [
         { action: 'RAISE_2_5' as ActionType, label: '标准加注 2.5x BB (Standard Open)', freq: raiseFreq },
@@ -523,12 +552,11 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
     }
 
     if (scenarioMode === 'PREFLOP_BB_DEFENSE') {
-      const bbMap = DEFAULT_RANGE_CONVERTER_PROFILE.matrixData['BB'] || {};
-      const freqs = bbMap[heroNotation] || { call: 0.50, fold: 0.35, threeBet: 0.15 };
+      const freqs = getGtoPreflopStrategyForHand('BB', heroNotation);
 
       const threeBetFreq = freqs.threeBet || 0.15;
       const callFreq = freqs.call || 0.50;
-      const foldFreq = Math.max(0, 1.0 - (threeBetFreq + callFreq));
+      const foldFreq = freqs.fold !== undefined ? freqs.fold : Math.max(0, 1.0 - (threeBetFreq + callFreq));
 
       return [
         { action: 'THREE_BET' as ActionType, label: '3-Bet 反击加注 (10BB)', freq: threeBetFreq },
@@ -563,13 +591,28 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
     const chosenOption = options.find(o => o.action === action);
     const bestOption = [...options].sort((a, b) => b.freq - a.freq)[0];
 
-    // Evaluate accuracy strictly:
-    // Optimal IF chosen action IS the highest frequency option, OR if it has a high mixing frequency (>= 0.35)
-    const isOptimal = chosenOption
-      ? chosenOption.action === bestOption.action || (chosenOption.freq >= 0.35 && (bestOption.freq - chosenOption.freq) <= 0.20)
-      : false;
+    // Evaluate accuracy strictly adhering to GTO Solver Principles:
+    // 1. Primary Optimal: Chosen action IS the highest frequency option.
+    // 2. Mixed Optimal: Chosen action has an active GTO mixing frequency (>= 0.05 or 5%). In GTO Solvers, mixed actions carry equal EV (0 mBB EV Loss).
+    // 3. Suboptimal / Blunder: Chosen action has 0% or negligible (< 5%) GTO frequency.
 
-    const evLoss = isOptimal ? 0 : Math.max(10, Math.round((bestOption.freq - (chosenOption?.freq || 0)) * 100));
+    const isPrimaryOptimal = chosenOption?.action === bestOption.action;
+    const isMixedOptimal = chosenOption ? (chosenOption.freq >= 0.05 && !isPrimaryOptimal) : false;
+    const isOptimal = isPrimaryOptimal || isMixedOptimal;
+
+    // EV Loss is ZERO for all valid GTO mixed or primary strategies
+    const evLoss = isOptimal
+      ? 0
+      : Math.max(15, Math.round((bestOption.freq - (chosenOption?.freq || 0)) * 100));
+
+    let evalMessage = '';
+    if (isPrimaryOptimal) {
+      evalMessage = `✅ 决策正确！符合 GTO 主导策略 (${Math.round(bestOption.freq * 100)}% 频率)`;
+    } else if (isMixedOptimal && chosenOption) {
+      evalMessage = `✅ 决策正确！符合 GTO 混合策略 (${Math.round(chosenOption.freq * 100)}% 混合频率)`;
+    } else {
+      evalMessage = `❌ 决策偏离 (建议动作: ${bestOption.label})`;
+    }
 
     const explanation = generateGtoDetailedExplanation(
       trainingStage,
@@ -588,7 +631,7 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
     setEvalResult({
       isOptimal,
       evLossMBB: evLoss,
-      message: isOptimal ? '决策正确！符合 GTO 推荐策略' : `决策偏离 (建议动作: ${bestOption.label})`,
+      message: evalMessage,
       chosenOption,
       bestOption,
       explanation,

@@ -588,3 +588,63 @@ export function getHandNotationFromCards(c1: Card, c2: Card): string {
   const suited = highCard.suit === lowCard.suit ? 's' : 'o';
   return `${highCard.rank}${lowCard.rank}${suited}`;
 }
+
+// Smart GTO Preflop strategy resolver with realistic Solver thresholds for offsuit/suited borderline hands
+export function getGtoPreflopStrategyForHand(pos: Position, handNotation: string): StrategyFrequencies {
+  const posMap = DEFAULT_RANGE_CONVERTER_PROFILE.matrixData[pos];
+  if (posMap && posMap[handNotation]) {
+    return posMap[handNotation];
+  }
+
+  const isPair = handNotation.length === 2;
+  const isSuited = handNotation.endsWith('s');
+  const r1 = handNotation[0] as CardRank;
+  const r2 = handNotation[1] as CardRank;
+  const r1Val = 14 - RANKS.indexOf(r1);
+  const r2Val = 14 - RANKS.indexOf(r2);
+
+  if (pos === 'BTN') {
+    if (isPair) {
+      return { raise2_5: 0.60, fold: 0.40 };
+    }
+    if (isSuited) {
+      if (r1Val >= 10 || r2Val >= 9) {
+        return { raise2_5: 0.75, fold: 0.25 };
+      }
+      return { raise2_5: 0.50, fold: 0.50 };
+    }
+    // Offsuit Hands on BTN
+    if (handNotation === '65o' || handNotation === '76o' || handNotation === '87o' || handNotation === '54o') {
+      return { fold: 0.85, raise2_5: 0.15 }; // 85% Fold / 15% Mix Raise for offsuit connectors on BTN
+    }
+    if (r1Val >= 12 && r2Val >= 8) { // K8o, Q9o, J9o
+      return { raise2_5: 0.60, fold: 0.40 };
+    }
+    if (r1Val === 14) { // Ax offsuit e.g. A3o, A2o
+      return { raise2_5: 0.55, fold: 0.45 };
+    }
+    // Pure Trash Offsuit Hands (e.g., J2o, Q3o, K2o, 94o, 72o)
+    return { fold: 1.0, raise2_5: 0.0 };
+  }
+
+  if (pos === 'CO' || pos === 'HJ' || pos === 'UTG') {
+    if (isSuited && r1Val >= 11) {
+      return { raise2_5: 0.50, fold: 0.50 };
+    }
+    return { fold: 1.0, raise2_5: 0.0 };
+  }
+
+  if (pos === 'SB') {
+    if (isSuited) return { raise3: 0.40, call: 0.30, fold: 0.30 };
+    return { fold: 0.80, raise3: 0.20 };
+  }
+
+  if (pos === 'BB') {
+    if (isSuited) return { call: 0.60, fold: 0.40 };
+    if (r1Val >= 10) return { call: 0.50, fold: 0.50 };
+    return { fold: 0.85, call: 0.15 };
+  }
+
+  return { fold: 1.0 };
+}
+
