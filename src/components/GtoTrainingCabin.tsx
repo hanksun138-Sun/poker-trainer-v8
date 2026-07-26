@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Position, ActionType, UserProfile, GtoAuditResponse, CardRank, CardSuit } from '../types/poker';
-import { drawRandomCardCombo, formatCardString, getHandNotationFromCards, get169HandNames, SUIT_COLORS, SUIT_SYMBOLS, FLOP_BOARDS, TEXAS_SOLVER_A_DRY_BTNVsBB, DEFAULT_RANGE_CONVERTER_PROFILE, getGtoPreflopStrategyForHand } from '../data/pokerData';
+import { drawRandomCardCombo, formatCardString, getHandNotationFromCards, get169HandNames, SUIT_COLORS, SUIT_SYMBOLS, FLOP_BOARDS, TEXAS_SOLVER_A_DRY_BTNVsBB, DEFAULT_RANGE_CONVERTER_PROFILE, getGtoPreflopStrategyForHand, RANKS } from '../data/pokerData';
 import { Zap, Sparkles, AlertCircle, CheckCircle2, ChevronRight, Tablet, BarChart3, RotateCcw, Target, Brain, RefreshCw, Layers, Sliders, Check, Trophy, Users, ShieldAlert, Award, MessageSquare, Dices, DollarSign, Crown, History, Eye, Flame, Filter, HelpCircle } from 'lucide-react';
 
 interface GtoTrainingCabinProps {
@@ -107,15 +107,15 @@ export function generateGtoDetailedExplanation(
   heroNotation: string,
   userAction: ActionType,
   bestAction: ActionType,
-  chosenOption: { label: string; freq: number; ev?: number } | undefined,
-  bestOption: { label: string; freq: number; ev?: number },
+  chosenOption: { action?: ActionType; label: string; freq: number; ev?: number } | undefined,
+  bestOption: { action?: ActionType; label: string; freq: number; ev?: number },
   isOptimal: boolean,
   boardCards: Card[]
 ): { reasoning: string; rangeLogic: string; actionTip: string } {
   const boardStr = boardCards.map(formatCardString).join(' ');
   const chosenFreq = chosenOption ? Math.round(chosenOption.freq * 100) : 0;
   const bestFreq = Math.round(bestOption.freq * 100);
-  const isPrimaryOptimal = chosenOption?.action === bestOption.action;
+  const isPrimaryOptimal = chosenOption?.action ? chosenOption.action === bestOption.action : false;
   const isMixedOptimal = isOptimal && !isPrimaryOptimal;
 
   // Accurately classify hand strength without templated hallucination
@@ -188,7 +188,7 @@ export function generateGtoDetailedExplanation(
       reasoning = `手牌 [${heroNotation}] 处于 [${heroPos}] 位的正 EV 加注范围，直接弃牌放弃了入局机会。`;
       rangeLogic = `如果将此类${handTypeLabel}过于保守地 Fold 掉，你的整个加注/防守范围将被对手过度剥削 (Exploit)。`;
       actionTip = `💡 修正方案：请坚决使用 [${bestOption.label}] 加注入局，建立底池主动权。`;
-    } else if (userAction !== 'FOLD' && bestOption.action === 'FOLD') {
+    } else if (bestOption.action === 'FOLD') {
       reasoning = `手牌 [${heroNotation}] 在 [${heroPos}] 位置不具备入局价值，选择加注属于过度开池 (Over-opening) 的松瘫漏水漏洞。`;
       rangeLogic = `在 6-Max 中，[${heroPos}] 位加入此类垃圾/弱牌 (如 [${heroNotation}]) 会导致防守范围过宽，面对 3-Bet 或翻后抵抗时将产生巨大 EV 损耗。`;
       actionTip = `💡 避坑建议：在 [${heroPos}] 位请坚决弃牌 (Fold) [${heroNotation}]，切勿在后位盲目开池。`;
