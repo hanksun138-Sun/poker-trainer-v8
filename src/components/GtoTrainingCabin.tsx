@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Position, ActionType, UserProfile, GtoAuditResponse, CardRank, CardSuit } from '../types/poker';
 import { drawRandomCardCombo, formatCardString, getHandNotationFromCards, get169HandNames, SUIT_COLORS, SUIT_SYMBOLS, FLOP_BOARDS, TEXAS_SOLVER_A_DRY_BTNVsBB, DEFAULT_RANGE_CONVERTER_PROFILE } from '../data/pokerData';
-import { Zap, Sparkles, AlertCircle, CheckCircle2, ChevronRight, Tablet, BarChart3, RotateCcw, Target, Brain, RefreshCw, Layers, Sliders, Check, Trophy, Users, ShieldAlert, Award, MessageSquare, Dices, DollarSign, Crown } from 'lucide-react';
+import { Zap, Sparkles, AlertCircle, CheckCircle2, ChevronRight, Tablet, BarChart3, RotateCcw, Target, Brain, RefreshCw, Layers, Sliders, Check, Trophy, Users, ShieldAlert, Award, MessageSquare, Dices, DollarSign, Crown, History, Eye, Flame, Filter, HelpCircle } from 'lucide-react';
 
 interface GtoTrainingCabinProps {
   currentUser: UserProfile;
@@ -39,6 +39,14 @@ export const ALL_CASINO_SEATS: CasinoSeat[] = [
   { id: 7, name: '刺猬 Whale', type: 'AI_WHALE', avatar: '🦔', styleLabel: '巨鲸 (WHALE) 盲目重注', borderColor: 'border-amber-300', bgColor: 'bg-amber-50', vpipPfr: 'VPIP 65% / PFR 35%', isOccupied: true },
   { id: 8, name: '狮子 Pro', type: 'AI_PRO', avatar: '🦁', styleLabel: '豪客牌手 (PRO) 顶级识破', borderColor: 'border-teal-300', bgColor: 'bg-teal-50', vpipPfr: 'VPIP 26% / PFR 22%', isOccupied: true },
 ];
+
+const CASINO_DIALOGUES: Record<string, string[]> = {
+  AI_FISH: ['这牌我一定要看看翻牌！', '顶对不弃牌，跟注到底！', '别吓唬我，我买到同花啦！'],
+  AI_MANIAC: ['全进！谁退缩谁是懦夫！', '重注 150% Pot 给你施压！', '你敢跟注我就秀给你看！'],
+  AI_LAG: ['在这个牌面上你的范围极其虚弱！', '阻挡牌在我手，轻松挤压！', '加注！这里没有任何人能防守。'],
+  AI_GTO: ['该点位处于 GTO 极化边缘，精确下注 33%。', '平衡频率控制，防守胜率 62%。', '无暇可击的 Solver 计算逻辑。'],
+  AI_NIT: ['太危险了，我只玩 AA/KK。', '遇到加注直接 Fold，安全第一。', '没有绝对强牌绝不下注。'],
+};
 
 // Radial coordinates for 9-max full ring seats around oval table
 const NINE_MAX_COORDS: { top: string; left: string }[] = [
@@ -253,6 +261,8 @@ const INITIAL_HAND_MASTERY_MAP: Record<string, HandMasteryData> = {
   'BTN_AKs': { trials: 3, correct: 3, wrong: 0, evLoss: 0 },
   'BTN_Q9s': { trials: 3, correct: 3, wrong: 0, evLoss: 0 },
   'BTN_K9s': { trials: 2, correct: 2, wrong: 0, evLoss: 0 },
+  'BTN_J10s': { trials: 3, correct: 2, wrong: 1, evLoss: 15 },
+  'BTN_76s': { trials: 2, correct: 1, wrong: 1, evLoss: 25 },
 };
 
 export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
@@ -283,14 +293,14 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
     '🎰 赌场发牌员: "欢迎来到 Las Vegas 真实 9-Max / 6-Max 动态现金桌！Button 顺时针每手旋转！"'
   );
 
-  const [drillMode, setDrillMode] = useState<'ADAPTIVE' | 'RANDOM'>('ADAPTIVE');
-  const [showMasteryMatrix, setShowMasteryMatrix] = useState<boolean>(true);
+  const [showMasteryMatrix, setShowMasteryMatrix] = useState<boolean>(false);
+  const [masteryFilter, setMasteryFilter] = useState<'ALL' | 'MASTERED' | 'GRAY_ZONE' | 'NEEDS_WORK' | 'UNTESTED'>('ALL');
+  const [showHandLogs, setShowHandLogs] = useState<boolean>(false);
 
   const [postflopTargetFlop, setPostflopTargetFlop] = useState<'ALL_MIXED' | 'A_HIGH_DRY' | 'K_HIGH_DRY' | 'PAIRED_DRY' | 'WET_CONNECTOR' | 'MONOTONE'>('ALL_MIXED');
-  const [postflopTargetTurn, setPostflopTargetTurn] = useState<'ALL_MIXED' | 'TURN_OVERCARD' | 'TURN_BRICK' | 'TURN_FLUSH_COMPLETE' | 'TURN_PAIRED'>('ALL_MIXED');
-  const [postflopTargetRiver, setPostflopTargetRiver] = useState<'ALL_MIXED' | 'RIVER_VALUE_NUT' | 'RIVER_BLUFF_JAM' | 'RIVER_HERO_CALL' | 'RIVER_BLOCKBET'>('ALL_MIXED');
 
   const [handMasteryMap, setHandMasteryMap] = useState<Record<string, HandMasteryData>>(INITIAL_HAND_MASTERY_MAP);
+  const [handLogs, setHandLogs] = useState<HandLogItem[]>([]);
 
   const [sessionStats, setSessionStats] = useState({
     totalHands: 0,
@@ -322,7 +332,7 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
   const [aiAuditLoading, setAiAuditLoading] = useState<boolean>(false);
   const [aiAuditResult, setAiAuditResult] = useState<GtoAuditResponse | null>(null);
 
-  const dealNewHand = () => {
+  const dealNewHand = (selectedHandNotation?: string) => {
     let activePos: Position = 'BTN';
     if (preflopTargetPos === 'RANDOM_MIXED') {
       activePos = SIX_MAX_POSITIONS[Math.floor(Math.random() * SIX_MAX_POSITIONS.length)];
@@ -330,22 +340,70 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
       activePos = preflopTargetPos;
     }
 
-    let newHero = drawRandomCardCombo();
+    let newHero: [Card, Card];
+    if (selectedHandNotation) {
+      newHero = generateCardComboForNotation(selectedHandNotation);
+    } else {
+      newHero = drawRandomCardCombo();
+    }
+
     setHeroCards(newHero);
     setUserAction(null);
     setIsEvaluated(false);
     setEvalResult(null);
     setAiAuditResult(null);
 
-    setBoardCards([]);
-    setPotSize(1.5);
-    setStreet('PREFLOP');
-    setHeroPos(activePos);
-    setVillainPos(activePos === 'BB' ? 'BTN' : 'BB');
-    if (activePos === 'BB') {
-      setScenarioMode('PREFLOP_BB_DEFENSE');
-    } else {
+    // Setup board based on stage
+    if (trainingStage === 'STAGE_1_PREFLOP') {
+      setBoardCards([]);
+      setPotSize(1.5);
+      setStreet('PREFLOP');
+      setHeroPos(activePos);
+      setVillainPos(activePos === 'BB' ? 'BTN' : 'BB');
+      setScenarioMode(activePos === 'BB' ? 'PREFLOP_BB_DEFENSE' : 'PREFLOP_RFI');
+    } else if (trainingStage === 'STAGE_2_FLOP') {
+      const flopBoard = FLOP_BOARDS[Math.floor(Math.random() * FLOP_BOARDS.length)];
+      setBoardCards([...flopBoard.cards]);
+      setPotSize(6.5);
+      setStreet('FLOP');
+      setHeroPos('BTN');
+      setVillainPos('BB');
+      setScenarioMode('POSTFLOP_MULTI_STREET');
+    } else if (trainingStage === 'STAGE_3_TURN') {
+      const flopBoard = FLOP_BOARDS[Math.floor(Math.random() * FLOP_BOARDS.length)];
+      const turnCard: Card = { rank: 'J', suit: 'd' };
+      setBoardCards([...flopBoard.cards, turnCard]);
+      setPotSize(18.5);
+      setStreet('TURN');
+      setHeroPos('BTN');
+      setVillainPos('BB');
+      setScenarioMode('POSTFLOP_MULTI_STREET');
+    } else if (trainingStage === 'STAGE_4_RIVER') {
+      const flopBoard = FLOP_BOARDS[Math.floor(Math.random() * FLOP_BOARDS.length)];
+      const turnCard: Card = { rank: 'J', suit: 'd' };
+      const riverCard: Card = { rank: '2', suit: 'c' };
+      setBoardCards([...flopBoard.cards, turnCard, riverCard]);
+      setPotSize(45.0);
+      setStreet('RIVER');
+      setHeroPos('BTN');
+      setVillainPos('BB');
+      setScenarioMode('POSTFLOP_MULTI_STREET');
+    } else if (trainingStage === 'STAGE_5_CASINO_RING') {
+      // Casino Ring clockwise button advance
+      setBtnSeatIndex((prev) => (prev + 1) % 9);
+      setCasinoHandsPlayed((prev) => prev + 1);
+      setBoardCards([]);
+      setPotSize(1.5);
+      setStreet('PREFLOP');
+      setHeroPos('BTN');
+      setVillainPos('SB');
       setScenarioMode('PREFLOP_RFI');
+
+      // Pick random dialogue from AI opponent
+      const randomOpponent = ALL_CASINO_SEATS[1 + Math.floor(Math.random() * 8)];
+      const quotes = CASINO_DIALOGUES[randomOpponent.type] || ['看看你的 GTO 水平怎么样！'];
+      const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+      setCasinoRecentDialogue(`${randomOpponent.avatar} ${randomOpponent.name}: "${randomQuote}"`);
     }
   };
 
@@ -354,6 +412,27 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
   }, [trainingStage, scenarioMode]);
 
   const heroNotation = getHandNotationFromCards(heroCards[0], heroCards[1]);
+
+  // Deal Turn / River cards in multi-street postflop
+  const handleAdvanceNextStreet = () => {
+    if (street === 'FLOP') {
+      const turnCard: Card = { rank: 'K', suit: 'd' };
+      setBoardCards((prev) => [...prev, turnCard]);
+      setStreet('TURN');
+      setPotSize((prev) => Math.round((prev + 12.0) * 10) / 10);
+      setUserAction(null);
+      setIsEvaluated(false);
+      setEvalResult(null);
+    } else if (street === 'TURN') {
+      const riverCard: Card = { rank: '3', suit: 'h' };
+      setBoardCards((prev) => [...prev, riverCard]);
+      setStreet('RIVER');
+      setPotSize((prev) => Math.round((prev + 25.0) * 10) / 10);
+      setUserAction(null);
+      setIsEvaluated(false);
+      setEvalResult(null);
+    }
+  };
 
   // Generate normalized, noise-free GTO action options summing to EXACTLY 1.0 (100%)
   const getGtoActionOptions = () => {
@@ -405,7 +484,7 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
       ];
     }
 
-    // Postflop options
+    // Postflop options for Flop / Turn / River
     return [
       { action: 'CBET_33' as ActionType, label: '下注 33% Pot (小注打频)', freq: 0.60 },
       { action: 'CBET_75' as ActionType, label: '下注 75% Pot (重注极化)', freq: 0.25 },
@@ -468,6 +547,48 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
       };
     });
 
+    // Update Casino Bankroll in Stage 5
+    if (trainingStage === 'STAGE_5_CASINO_RING') {
+      const delta = isOptimal ? 3.5 : -5.0;
+      setCasinoProfitBB((p) => Math.round((p + delta) * 10) / 10);
+      setCasinoBankrollBB((b) => Math.round((b + delta) * 10) / 10);
+    }
+
+    // Update 169 Hand Mastery Record
+    const key = `${heroPos}_${heroNotation}`;
+    setHandMasteryMap((prev) => {
+      const existing = prev[key] || { trials: 0, correct: 0, wrong: 0, evLoss: 0 };
+      return {
+        ...prev,
+        [key]: {
+          trials: existing.trials + 1,
+          correct: existing.correct + (isOptimal ? 1 : 0),
+          wrong: existing.wrong + (isOptimal ? 0 : 1),
+          evLoss: existing.evLoss + evLoss,
+        },
+      };
+    });
+
+    // Append to Hand Logs History
+    const logItem: HandLogItem = {
+      id: `log_${Date.now()}`,
+      timestamp: Date.now(),
+      stage: trainingStage,
+      heroPos,
+      villainPos,
+      heroNotation,
+      boardCards: boardCards.map(formatCardString).join(' '),
+      userAction: action,
+      chosenLabel: chosenOption?.label || action,
+      bestAction: bestOption.action,
+      bestLabel: bestOption.label,
+      isOptimal,
+      evLoss,
+      scenarioMode,
+      explanation,
+    };
+    setHandLogs((prev) => [logItem, ...prev]);
+
     onRecordHandResult({
       isCorrect: isOptimal,
       evLossMBB: evLoss,
@@ -501,6 +622,9 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
 
   const accuracyPercent = sessionStats.totalHands > 0 ? Math.round((sessionStats.correctHands / sessionStats.totalHands) * 100) : 100;
 
+  // 169 Hand Names for Matrix
+  const matrix169Names = get169HandNames();
+
   return (
     <div className="space-y-3 sm:space-y-4">
       {/* Top Header Control Panel */}
@@ -522,19 +646,59 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
           </div>
 
           {trainingStage === 'STAGE_1_PREFLOP' && (
-            <select
-              value={scenarioMode}
-              onChange={(e) => setScenarioMode(e.target.value as any)}
-              className="bg-white border border-slate-300 text-slate-800 text-xs sm:text-sm font-bold rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-emerald-600 shadow-sm cursor-pointer"
-            >
-              <option value="PREFLOP_RFI">RFI 首加注决策</option>
-              <option value="PREFLOP_BB_DEFENSE">大盲注 BB 盲注捍卫</option>
-              <option value="PREFLOP_VS_3BET">面对 3-Bet 挤压/反击</option>
-            </select>
+            <>
+              <select
+                value={preflopTargetPos}
+                onChange={(e) => setPreflopTargetPos(e.target.value as any)}
+                className="bg-white border border-slate-300 text-slate-800 text-xs sm:text-sm font-bold rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-emerald-600 shadow-sm cursor-pointer"
+              >
+                <option value="BTN">位置: BTN 按钮位</option>
+                <option value="CO">位置: CO 关口位</option>
+                <option value="HJ">位置: HJ 劫持位</option>
+                <option value="UTG">位置: UTG 枪口位</option>
+                <option value="SB">位置: SB 小盲位</option>
+                <option value="BB">位置: BB 大盲位</option>
+                <option value="RANDOM_MIXED">全位置随机混合</option>
+              </select>
+
+              <select
+                value={scenarioMode}
+                onChange={(e) => setScenarioMode(e.target.value as any)}
+                className="bg-white border border-slate-300 text-slate-800 text-xs sm:text-sm font-bold rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-emerald-600 shadow-sm cursor-pointer"
+              >
+                <option value="PREFLOP_RFI">RFI 首加注决策</option>
+                <option value="PREFLOP_BB_DEFENSE">大盲注 BB 盲注捍卫</option>
+                <option value="PREFLOP_VS_3BET">面对 3-Bet 挤压/反击</option>
+              </select>
+            </>
           )}
 
           <button
-            onClick={dealNewHand}
+            onClick={() => setShowMasteryMatrix(!showMasteryMatrix)}
+            className={`flex items-center space-x-1 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer shadow-sm ${
+              showMasteryMatrix
+                ? 'bg-amber-500 border-amber-600 text-slate-950 font-black'
+                : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            <BarChart3 className="w-3.5 h-3.5" />
+            <span>169 矩阵热力图</span>
+          </button>
+
+          <button
+            onClick={() => setShowHandLogs(!showHandLogs)}
+            className={`flex items-center space-x-1 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer shadow-sm ${
+              showHandLogs
+                ? 'bg-indigo-600 border-indigo-700 text-white font-black'
+                : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            <History className="w-3.5 h-3.5" />
+            <span>手牌特训日志 ({handLogs.length})</span>
+          </button>
+
+          <button
+            onClick={() => dealNewHand()}
             className="flex items-center space-x-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs sm:text-sm font-extrabold px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
           >
             <Sparkles className="w-4 h-4" />
@@ -573,6 +737,128 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
         </div>
       </div>
 
+      {/* 169 Hand Mastery Matrix Drawer / Modal */}
+      {showMasteryMatrix && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-md space-y-3 animate-in fade-in duration-200">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-emerald-600" />
+                <span>169 手牌掌握度分布矩阵 (点击任意手牌直接对决)</span>
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">绿色: 已精通(80%+胜率) | 黄色: 模糊区(40-80%) | 红色: 待加强(&lt;40%) | 灰色: 未测试</p>
+            </div>
+
+            <div className="flex items-center space-x-1 text-xs">
+              {(['ALL', 'MASTERED', 'GRAY_ZONE', 'NEEDS_WORK', 'UNTESTED'] as const).map((filter) => (
+                <button
+                  key={filter}
+                  onClick={() => setMasteryFilter(filter)}
+                  className={`px-2.5 py-1 rounded-lg border font-bold transition-all ${
+                    masteryFilter === filter
+                      ? 'bg-slate-900 border-slate-900 text-white'
+                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  {filter === 'ALL' && '全部 (169)'}
+                  {filter === 'MASTERED' && '🟢 精通'}
+                  {filter === 'GRAY_ZONE' && '🟡 模糊'}
+                  {filter === 'NEEDS_WORK' && '🔴 弱项'}
+                  {filter === 'UNTESTED' && '⚪️ 未测试'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-13 gap-1 max-w-xl mx-auto aspect-square bg-slate-950 p-2 rounded-xl border border-slate-800 shadow-inner">
+            {matrix169Names.map((row) =>
+              row.map((handName) => {
+                const key = `${heroPos}_${handName}`;
+                const rec = handMasteryMap[key];
+                const status = getHandMasteryStatus(rec);
+
+                let bgClass = 'bg-slate-800 text-slate-400 border-slate-700';
+                if (status === 'MASTERED') bgClass = 'bg-emerald-600 text-white border-emerald-500 font-black';
+                else if (status === 'GRAY_ZONE') bgClass = 'bg-amber-500 text-slate-950 border-amber-400 font-bold';
+                else if (status === 'NEEDS_WORK') bgClass = 'bg-rose-600 text-white border-rose-500 font-bold';
+
+                const isFilteredOut =
+                  (masteryFilter === 'MASTERED' && status !== 'MASTERED') ||
+                  (masteryFilter === 'GRAY_ZONE' && status !== 'GRAY_ZONE') ||
+                  (masteryFilter === 'NEEDS_WORK' && status !== 'NEEDS_WORK') ||
+                  (masteryFilter === 'UNTESTED' && status !== 'UNTESTED');
+
+                return (
+                  <button
+                    key={handName}
+                    disabled={isFilteredOut}
+                    onClick={() => {
+                      dealNewHand(handName);
+                      setShowMasteryMatrix(false);
+                    }}
+                    title={`${handName}: ${rec ? `${rec.correct}/${rec.trials} 次正确 (${Math.round((rec.correct/rec.trials)*100)}%)` : '未出题'}`}
+                    className={`rounded transition-all duration-150 flex items-center justify-center font-mono font-bold text-[9px] sm:text-xs select-none border ${bgClass} ${
+                      isFilteredOut ? 'opacity-20 cursor-not-allowed' : 'hover:scale-105 hover:z-10 cursor-pointer shadow'
+                    }`}
+                  >
+                    {handName}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Played Hand History Logs Modal */}
+      {showHandLogs && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-md space-y-3 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <History className="w-4 h-4 text-indigo-600" />
+              <span>当场手牌特训历史记录 ({handLogs.length} 把)</span>
+            </h3>
+            <button
+              onClick={() => setHandLogs([])}
+              className="text-xs text-rose-600 hover:underline font-medium cursor-pointer"
+            >
+              清空记录
+            </button>
+          </div>
+
+          {handLogs.length === 0 ? (
+            <p className="text-xs text-slate-400 text-center py-6">暂无手牌记录，快开始练习吧！</p>
+          ) : (
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+              {handLogs.map((log) => (
+                <div
+                  key={log.id}
+                  className={`p-3 rounded-xl border text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 ${
+                    log.isOptimal ? 'bg-emerald-50/60 border-emerald-200' : 'bg-rose-50/60 border-rose-200'
+                  }`}
+                >
+                  <div className="flex items-center space-x-2">
+                    <span className={`px-2 py-0.5 rounded font-black text-[10px] ${
+                      log.isOptimal ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+                    }`}>
+                      {log.isOptimal ? '✅ 正确' : '❌ 偏离'}
+                    </span>
+                    <span className="font-bold text-slate-900">[{log.heroPos}] {log.heroNotation}</span>
+                    {log.boardCards && <span className="font-mono text-slate-500">[{log.boardCards}]</span>}
+                  </div>
+
+                  <div className="flex items-center space-x-3 text-slate-700">
+                    <span>你的选择: <strong className="text-slate-900">{log.chosenLabel}</strong></span>
+                    <span>推荐: <strong className="text-emerald-700">{log.bestLabel}</strong></span>
+                    {!log.isOptimal && <span className="text-rose-600 font-bold">-{log.evLoss} mBB</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Oval Poker Table Canvas */}
       <div className="relative bg-slate-100 border border-slate-200 rounded-2xl sm:rounded-3xl p-2 sm:p-4 shadow-sm flex flex-col justify-between my-1 w-full">
         
@@ -588,6 +874,13 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
               <span>🪙 底池 (POT):</span>
               <span className="text-emerald-300 font-black text-xs sm:text-lg md:text-xl">{potSize} BB</span>
             </div>
+
+            {/* Stage 5 Casino Ring Banner */}
+            {trainingStage === 'STAGE_5_CASINO_RING' && (
+              <div className="bg-amber-500/90 border border-amber-300 text-slate-950 px-3 py-1 rounded-full text-[11px] font-black shadow-lg animate-bounce">
+                {casinoRecentDialogue}
+              </div>
+            )}
 
             {/* Community Board Cards */}
             <div className="flex items-center space-x-1.5 sm:space-x-2.5 my-1">
@@ -609,69 +902,120 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
             </div>
           </div>
 
-          {/* Render Seats around the Poker Table */}
-          {SIX_MAX_POSITIONS.map((pos) => {
-            const isHero = pos === heroPos;
-            const isVillain = pos === villainPos;
-            const coords = SEAT_POSITIONS_MAP[pos];
+          {/* Render Seats around the Poker Table (6-Max vs 9-Max) */}
+          {trainingStage === 'STAGE_5_CASINO_RING' ? (
+            // Stage 5: 9-Max Casino Ring Game Layout
+            ALL_CASINO_SEATS.map((seat, index) => {
+              const coords = NINE_MAX_COORDS[index];
+              const isHero = seat.type === 'HERO';
+              const isButton = btnSeatIndex === index;
 
-            const actionBadge = getSeatActionBadge(pos, heroPos, villainPos, scenarioMode, isEvaluated, evalResult);
-
-            return (
-              <div
-                key={pos}
-                style={{ top: coords.top, left: coords.left }}
-                className="absolute -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center"
-              >
-                {/* Player Seat Chip Badge */}
+              return (
                 <div
-                  className={`px-2 sm:px-3 py-1 rounded-lg sm:rounded-xl border flex flex-col items-center shadow-xl transition-all ${
-                    isHero
-                      ? 'bg-white border-amber-500 ring-2 ring-amber-400/80 scale-105 z-30'
-                      : isVillain
-                      ? 'bg-white border-rose-500 ring-2 ring-rose-400/60 z-20'
-                      : 'bg-slate-50 border-slate-200 opacity-90'
-                  }`}
+                  key={seat.id}
+                  style={{ top: coords.top, left: coords.left }}
+                  className="absolute -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center"
                 >
-                  <div className="flex items-center space-x-1">
-                    <span className="font-mono font-black text-xs sm:text-sm text-slate-900">{pos}</span>
-                    {isHero && <span className="text-[9px] sm:text-[10px] bg-amber-500 text-slate-950 font-black px-1 rounded">Hero</span>}
-                    {isVillain && <span className="text-[9px] sm:text-[10px] bg-rose-600 text-white font-black px-1 rounded">Villain</span>}
+                  <div
+                    className={`px-2 py-1 rounded-xl border flex flex-col items-center shadow-xl transition-all ${seat.bgColor} ${seat.borderColor} ${
+                      isHero ? 'ring-2 ring-amber-400 scale-105 z-30' : 'ring-1 ring-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span className="text-sm">{seat.avatar}</span>
+                      <span className="font-bold text-xs text-slate-900">{seat.name}</span>
+                      {isButton && (
+                        <span className="bg-amber-400 text-slate-950 font-black text-[9px] px-1 rounded-full border border-amber-600">
+                          BTN
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[9px] font-mono text-slate-500">{seat.vpipPfr}</span>
                   </div>
-                  <span className="text-[9px] sm:text-[10px] font-mono text-slate-500 font-semibold">100 BB</span>
+
+                  {isHero && (
+                    <div className="flex items-center space-x-1 mt-0.5">
+                      {heroCards.map((card, idx) => (
+                        <div
+                          key={idx}
+                          className={`w-8 h-12 rounded border bg-white shadow flex flex-col items-center justify-between p-0.5 font-mono font-black text-xs ${
+                            SUIT_COLORS[card.suit]
+                          }`}
+                        >
+                          <span>{card.rank}</span>
+                          <span>{SUIT_SYMBOLS[card.suit]}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
+              );
+            })
+          ) : (
+            // Stages 1-4: Standard 6-Max Seats Layout
+            SIX_MAX_POSITIONS.map((pos) => {
+              const isHero = pos === heroPos;
+              const isVillain = pos === villainPos;
+              const coords = SEAT_POSITIONS_MAP[pos];
 
-                {/* Action Badge */}
-                <div className={`mt-0.5 px-2 py-0.5 rounded-full border text-[10px] sm:text-xs font-mono font-bold shadow-xs whitespace-nowrap ${actionBadge.bg}`}>
-                  {actionBadge.label}
+              const actionBadge = getSeatActionBadge(pos, heroPos, villainPos, scenarioMode, isEvaluated, evalResult);
+
+              return (
+                <div
+                  key={pos}
+                  style={{ top: coords.top, left: coords.left }}
+                  className="absolute -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center"
+                >
+                  {/* Player Seat Chip Badge */}
+                  <div
+                    className={`px-2 sm:px-3 py-1 rounded-lg sm:rounded-xl border flex flex-col items-center shadow-xl transition-all ${
+                      isHero
+                        ? 'bg-white border-amber-500 ring-2 ring-amber-400/80 scale-105 z-30'
+                        : isVillain
+                        ? 'bg-white border-rose-500 ring-2 ring-rose-400/60 z-20'
+                        : 'bg-slate-50 border-slate-200 opacity-90'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span className="font-mono font-black text-xs sm:text-sm text-slate-900">{pos}</span>
+                      {isHero && <span className="text-[9px] sm:text-[10px] bg-amber-500 text-slate-950 font-black px-1 rounded">Hero</span>}
+                      {isVillain && <span className="text-[9px] sm:text-[10px] bg-rose-600 text-white font-black px-1 rounded">Villain</span>}
+                    </div>
+                    <span className="text-[9px] sm:text-[10px] font-mono text-slate-500 font-semibold">100 BB</span>
+                  </div>
+
+                  {/* Action Badge */}
+                  <div className={`mt-0.5 px-2 py-0.5 rounded-full border text-[10px] sm:text-xs font-mono font-bold shadow-xs whitespace-nowrap ${actionBadge.bg}`}>
+                    {actionBadge.label}
+                  </div>
+
+                  {/* Dealt Hole Cards for Hero */}
+                  {isHero && (
+                    <div className="flex items-center space-x-1 mt-0.5 animate-in fade-in zoom-in-95 duration-200">
+                      {heroCards.map((card, idx) => (
+                        <div
+                          key={idx}
+                          className={`w-9 h-13 sm:w-12 sm:h-17 md:w-14 md:h-20 rounded-md sm:rounded-lg border-2 border-slate-200 bg-white shadow-xl flex flex-col items-center justify-between p-0.5 font-mono font-black select-none ${
+                            SUIT_COLORS[card.suit]
+                          }`}
+                        >
+                          <span className="text-xs sm:text-sm md:text-base leading-none">{card.rank}</span>
+                          <span className="text-sm sm:text-lg md:text-xl leading-none">{SUIT_SYMBOLS[card.suit]}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {isVillain && (
+                    <div className="flex items-center space-x-0.5 mt-0.5 opacity-80">
+                      <div className="w-5 h-7 sm:w-6 sm:h-9 rounded bg-indigo-950 border border-indigo-700 flex items-center justify-center text-[10px] text-indigo-300 shadow">🎴</div>
+                      <div className="w-5 h-7 sm:w-6 sm:h-9 rounded bg-indigo-950 border border-indigo-700 flex items-center justify-center text-[10px] text-indigo-300 shadow">🎴</div>
+                    </div>
+                  )}
                 </div>
-
-                {/* Dealt Hole Cards for Hero */}
-                {isHero && (
-                  <div className="flex items-center space-x-1 mt-0.5 animate-in fade-in zoom-in-95 duration-200">
-                    {heroCards.map((card, idx) => (
-                      <div
-                        key={idx}
-                        className={`w-9 h-13 sm:w-12 sm:h-17 md:w-14 md:h-20 rounded-md sm:rounded-lg border-2 border-slate-200 bg-white shadow-xl flex flex-col items-center justify-between p-0.5 font-mono font-black select-none ${
-                          SUIT_COLORS[card.suit]
-                        }`}
-                      >
-                        <span className="text-xs sm:text-sm md:text-base leading-none">{card.rank}</span>
-                        <span className="text-sm sm:text-lg md:text-xl leading-none">{SUIT_SYMBOLS[card.suit]}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {isVillain && (
-                  <div className="flex items-center space-x-0.5 mt-0.5 opacity-80">
-                    <div className="w-5 h-7 sm:w-6 sm:h-9 rounded bg-indigo-950 border border-indigo-700 flex items-center justify-center text-[10px] text-indigo-300 shadow">🎴</div>
-                    <div className="w-5 h-7 sm:w-6 sm:h-9 rounded bg-indigo-950 border border-indigo-700 flex items-center justify-center text-[10px] text-indigo-300 shadow">🎴</div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+              );
+            })
+          )}
 
         </div>
 
@@ -699,7 +1043,7 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
               </div>
 
               {/* Action Buttons Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-2 gap-2 sm:gap-3 max-w-lg mx-auto">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 max-w-xl mx-auto">
                 {options.map((opt) => (
                   <button
                     key={opt.action}
@@ -747,6 +1091,17 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
                   </div>
 
                   <div className="flex flex-wrap items-center space-x-2 shrink-0">
+                    {/* Multi-Street Advance Buttons for Postflop */}
+                    {street !== 'RIVER' && trainingStage !== 'STAGE_1_PREFLOP' && (
+                      <button
+                        onClick={handleAdvanceNextStreet}
+                        className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 border border-amber-600 text-slate-950 text-xs font-black transition-all cursor-pointer shadow-sm"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                        <span>推进下条街 ({street === 'FLOP' ? 'Turn 发转牌' : 'River 发河牌'})</span>
+                      </button>
+                    )}
+
                     <button
                       onClick={handleRequestAudit}
                       disabled={aiAuditLoading}
@@ -757,7 +1112,7 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
                     </button>
 
                     <button
-                      onClick={dealNewHand}
+                      onClick={() => dealNewHand()}
                       className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black transition-all cursor-pointer shadow-md shadow-emerald-600/20"
                     >
                       <span>下一发手牌</span>
