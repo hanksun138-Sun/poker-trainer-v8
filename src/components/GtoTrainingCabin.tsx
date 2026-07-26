@@ -214,7 +214,7 @@ function getSeatActionBadge(
     if (isEvaluated) {
       return evalResult?.isOptimal
         ? { label: `✅ ${evalResult.chosenOption?.label || '已决策'}`, bg: 'bg-emerald-100 text-emerald-800 border-emerald-300 font-bold' }
-        : { label: `❌ ${evalResult.chosenOption?.label || '已决策'}`, bg: 'bg-rose-100 text-rose-800 border-rose-300 font-bold' };
+        : { label: `❌ ${evalResult.chosenOption?.label || '已决策'}`, bg: 'bg-amber-100 text-amber-900 border-amber-300 font-bold' };
     }
     return { label: '🎯 Hero 决策中', bg: 'bg-amber-400 text-slate-950 border-amber-300 font-black animate-pulse' };
   }
@@ -241,7 +241,7 @@ function getSeatActionBadge(
 
   if (scenarioMode === 'PREFLOP_3BET') {
     if (pos === villainPos) {
-      return { label: '💥 3-Bet 加注 7.5x', bg: 'bg-rose-100 text-rose-900 border-rose-300 font-bold' };
+      return { label: '💥 3-Bet 加注 7.5x', bg: 'bg-amber-100 text-amber-900 border-amber-300 font-bold' };
     }
     if (posIdx < heroIdx) {
       return { label: '❌ 弃牌 Fold', bg: 'bg-slate-100 text-slate-400 border-slate-200' };
@@ -1106,12 +1106,12 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
           {!isEvaluated ? (
             <div className="space-y-2.5 sm:space-y-3 text-center">
               {/* Hero Decision Status Banner */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-2 bg-slate-900 border border-slate-700/80 text-white px-4 py-2.5 rounded-2xl shadow-md">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-2 bg-cyan-50 border-2 border-cyan-300/80 text-cyan-950 px-4 py-2.5 rounded-2xl shadow-xs">
                 <div className="flex items-center space-x-2">
-                  <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2.5 py-0.5 rounded text-xs font-black animate-pulse">
+                  <span className="bg-cyan-600 text-white px-2.5 py-0.5 rounded-md text-xs font-black animate-pulse shadow-xs">
                     🎯 HERO 决策中
                   </span>
-                  <span className="text-xs sm:text-sm md:text-base font-extrabold text-slate-100">
+                  <span className="text-xs sm:text-sm md:text-base font-black text-cyan-950">
                     轮到 Hero ({heroPos}) 决策 | 手牌 [{heroNotation}]
                   </span>
                 </div>
@@ -1130,24 +1130,24 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
                 </div>
               </div>
 
-              {/* Action Buttons Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 max-w-xl mx-auto">
+              {/* Action Buttons Grid with 3D Tactile Styling */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3 max-w-xl mx-auto pt-1">
                 {options.map((opt) => {
-                  let buttonStyle = 'bg-emerald-600 hover:bg-emerald-700 border-emerald-700 text-white font-black shadow-sm shadow-emerald-600/20';
+                  let buttonStyle = 'bg-gradient-to-b from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 border-2 border-b-4 border-emerald-800 border-t-emerald-300 text-white font-black shadow-md shadow-emerald-600/25 active:border-b-2';
 
                   if (opt.action === 'FOLD') {
-                    buttonStyle = 'bg-rose-50 hover:bg-rose-100 border-2 border-rose-300 text-rose-800 font-extrabold shadow-xs';
+                    buttonStyle = 'bg-gradient-to-b from-amber-100 to-amber-200 hover:from-amber-200 hover:to-amber-300 border-2 border-b-4 border-amber-400 border-t-amber-50 text-amber-950 font-black shadow-md shadow-amber-300/40 active:border-b-2';
                   } else if (opt.action === 'CALL' || opt.action === 'CHECK') {
-                    buttonStyle = 'bg-indigo-600 hover:bg-indigo-700 border-indigo-700 text-white font-extrabold shadow-sm shadow-indigo-600/20';
+                    buttonStyle = 'bg-gradient-to-b from-indigo-500 to-indigo-600 hover:from-indigo-400 hover:to-indigo-500 border-2 border-b-4 border-indigo-800 border-t-indigo-300 text-white font-black shadow-md shadow-indigo-600/25 active:border-b-2';
                   } else if (opt.action === 'THREE_BET' || opt.action === 'FOUR_BET' || opt.action === 'CBET_75') {
-                    buttonStyle = 'bg-teal-600 hover:bg-teal-700 border-teal-700 text-white font-black shadow-sm shadow-teal-600/20';
+                    buttonStyle = 'bg-gradient-to-b from-teal-500 to-teal-600 hover:from-teal-400 hover:to-teal-500 border-2 border-b-4 border-teal-800 border-t-teal-300 text-white font-black shadow-md shadow-teal-600/25 active:border-b-2';
                   }
 
                   return (
                     <button
                       key={opt.action}
                       onClick={() => handleSelectAction(opt.action)}
-                      className={`py-3 sm:py-3.5 px-3 rounded-xl sm:rounded-2xl border text-xs sm:text-sm md:text-base transition-all active:scale-95 cursor-pointer flex flex-col items-center justify-center gap-0.5 text-center ${buttonStyle}`}
+                      className={`py-3 sm:py-3.5 px-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm md:text-base transition-all duration-100 cursor-pointer flex flex-col items-center justify-center gap-0.5 text-center select-none active:translate-y-0.5 ${buttonStyle}`}
                     >
                       <span>{opt.label}</span>
                     </button>
@@ -1163,7 +1163,7 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
                 className={`p-4 rounded-2xl border flex flex-col space-y-3 shadow-sm ${
                   evalResult?.isOptimal
                     ? 'bg-emerald-50 border-2 border-emerald-400 text-emerald-950'
-                    : 'bg-rose-50 border-2 border-rose-400 text-rose-950'
+                    : 'bg-amber-50 border-2 border-amber-300 text-amber-950'
                 }`}
               >
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -1171,13 +1171,13 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
                     {evalResult?.isOptimal ? (
                       <CheckCircle2 className="w-7 h-7 text-emerald-600 shrink-0" />
                     ) : (
-                      <AlertCircle className="w-7 h-7 text-rose-600 shrink-0" />
+                      <AlertCircle className="w-7 h-7 text-amber-600 shrink-0" />
                     )}
                     <div>
                       <h4 className="font-black text-sm sm:text-base flex items-center gap-2 text-slate-900">
                         <span>{evalResult?.isOptimal ? '当场判定：✅ 决策正确' : '当场判定：❌ 决策偏离 (漏水)'}</span>
                         <span className={`text-xs px-2 py-0.5 rounded font-mono font-bold border shadow-xs ${
-                          evalResult?.isOptimal ? 'bg-emerald-100 border-emerald-300 text-emerald-800' : 'bg-rose-100 border-rose-300 text-rose-800'
+                          evalResult?.isOptimal ? 'bg-emerald-100 border-emerald-300 text-emerald-800' : 'bg-amber-100 border-amber-300 text-amber-900'
                         }`}>
                           {evalResult?.isOptimal ? 'EV 0 mBB' : `EV 损耗 -${evalResult?.evLossMBB} mBB`}
                         </span>
@@ -1239,7 +1239,7 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
                         </div>
                         <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden mt-1.5">
                           <div
-                            className={`h-full ${opt.action === 'FOLD' ? 'bg-rose-500' : 'bg-emerald-500'}`}
+                            className={`h-full ${opt.action === 'FOLD' ? 'bg-amber-500' : 'bg-emerald-500'}`}
                             style={{ width: `${pct}%` }}
                           />
                         </div>
