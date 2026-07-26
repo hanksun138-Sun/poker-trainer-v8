@@ -281,6 +281,11 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
     'PREFLOP_RFI' | 'PREFLOP_BB_DEFENSE' | 'PREFLOP_VS_3BET' | 'POSTFLOP_MULTI_STREET'
   >('PREFLOP_RFI');
 
+  const [drillPushMode, setDrillPushMode] = useState<'SMART_EBBINGHAUS' | 'WEAK_LEAK_DRILL' | 'RANDOM_ROTATION'>('SMART_EBBINGHAUS');
+  const [pushReasonBanner, setPushReasonBanner] = useState<string>(
+    '🧠 艾宾浩斯智推: 基于遗忘曲线与盲点漏洞动态算法出题'
+  );
+
   const [casinoTableFormat, setCasinoTableFormat] = useState<'6_MAX' | '9_MAX' | 'DYNAMIC_RANDOM'>('DYNAMIC_RANDOM');
   const [activeCasinoSeats, setActiveCasinoSeats] = useState<boolean[]>([
     true, true, true, true, true, true, true, true, true
@@ -332,6 +337,60 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
   const [aiAuditLoading, setAiAuditLoading] = useState<boolean>(false);
   const [aiAuditResult, setAiAuditResult] = useState<GtoAuditResponse | null>(null);
 
+  // Smart Adaptive Hand Selector using Ebbinghaus & Leak Weights
+  const selectSmartAdaptiveHand = (mode: 'SMART_EBBINGHAUS' | 'WEAK_LEAK_DRILL' | 'RANDOM_ROTATION'): { notation: string; reason: string } => {
+    const all169 = get169HandNames().flat();
+
+    if (mode === 'RANDOM_ROTATION') {
+      const chosen = all169[Math.floor(Math.random() * all169.length)];
+      return { notation: chosen, reason: '🎲 169 随机轮盘: 均匀平铺练习' };
+    }
+
+    const weightedPool: { notation: string; weight: number; reason: string }[] = [];
+
+    all169.forEach((hand) => {
+      const key = `${heroPos}_${hand}`;
+      const mastery = handMasteryMap[key];
+
+      let baseWeight = 1.0;
+      let reason = '定期记忆复习';
+
+      if (mastery) {
+        if (mastery.wrong > 0) {
+          const wrongMult = mode === 'WEAK_LEAK_DRILL' ? 8 : 5;
+          baseWeight += mastery.wrong * wrongMult;
+          reason = `历史出错 ${mastery.wrong} 次 (${Math.round((mastery.correct / mastery.trials) * 100)}% 胜率)`;
+        }
+        if (mastery.evLoss > 0) {
+          baseWeight += Math.floor(mastery.evLoss / 5);
+          reason += ` | 累积 EV 损耗 ${mastery.evLoss} mBB`;
+        }
+      } else {
+        baseWeight = 2.0;
+        reason = '未测试全新手牌 (优先探索)';
+      }
+
+      weightedPool.push({ notation: hand, weight: baseWeight, reason });
+    });
+
+    const totalWeight = weightedPool.reduce((sum, item) => sum + item.weight, 0);
+    let randomNum = Math.random() * totalWeight;
+
+    for (const item of weightedPool) {
+      if (randomNum < item.weight) {
+        const prefix = mode === 'SMART_EBBINGHAUS' ? '🧠 艾宾浩斯智推' : '🎯 漏洞弱项攻坚';
+        return {
+          notation: item.notation,
+          reason: `${prefix}: 手牌 [${item.notation}] ${item.reason}`,
+        };
+      }
+      randomNum -= item.weight;
+    }
+
+    const fallback = all169[Math.floor(Math.random() * all169.length)];
+    return { notation: fallback, reason: '🧠 艾宾浩斯智推: 定期随机复习' };
+  };
+
   const dealNewHand = (selectedHandNotation?: string) => {
     let activePos: Position = 'BTN';
     if (preflopTargetPos === 'RANDOM_MIXED') {
@@ -340,12 +399,16 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
       activePos = preflopTargetPos;
     }
 
-    let newHero: [Card, Card];
-    if (selectedHandNotation) {
-      newHero = generateCardComboForNotation(selectedHandNotation);
+    let chosenNotation = selectedHandNotation;
+    if (!chosenNotation) {
+      const adaptiveResult = selectSmartAdaptiveHand(drillPushMode);
+      chosenNotation = adaptiveResult.notation;
+      setPushReasonBanner(adaptiveResult.reason);
     } else {
-      newHero = drawRandomCardCombo();
+      setPushReasonBanner(`🎯 169 矩阵手动选牌对决: 手牌 [${chosenNotation}]`);
     }
+
+    const newHero = generateCardComboForNotation(chosenNotation);
 
     setHeroCards(newHero);
     setUserAction(null);
@@ -389,7 +452,6 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
       setVillainPos('BB');
       setScenarioMode('POSTFLOP_MULTI_STREET');
     } else if (trainingStage === 'STAGE_5_CASINO_RING') {
-      // Casino Ring clockwise button advance
       setBtnSeatIndex((prev) => (prev + 1) % 9);
       setCasinoHandsPlayed((prev) => prev + 1);
       setBoardCards([]);
@@ -399,7 +461,6 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
       setVillainPos('SB');
       setScenarioMode('PREFLOP_RFI');
 
-      // Pick random dialogue from AI opponent
       const randomOpponent = ALL_CASINO_SEATS[1 + Math.floor(Math.random() * 8)];
       const quotes = CASINO_DIALOGUES[randomOpponent.type] || ['看看你的 GTO 水平怎么样！'];
       const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
@@ -645,6 +706,19 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
             </select>
           </div>
 
+          <div className="flex items-center space-x-1.5 bg-emerald-50 border border-emerald-200 rounded-xl px-2.5 py-1.5 shadow-xs">
+            <Brain className="w-4 h-4 text-emerald-700 shrink-0" />
+            <select
+              value={drillPushMode}
+              onChange={(e) => setDrillPushMode(e.target.value as any)}
+              className="bg-transparent text-xs sm:text-sm font-extrabold text-emerald-900 focus:outline-none cursor-pointer"
+            >
+              <option value="SMART_EBBINGHAUS">🧠 艾宾浩斯记忆强化 (遗忘曲线加权)</option>
+              <option value="WEAK_LEAK_DRILL">🎯 漏洞弱项攻坚 (错题与EV 5倍权重)</option>
+              <option value="RANDOM_ROTATION">🎲 169 随机轮盘</option>
+            </select>
+          </div>
+
           {trainingStage === 'STAGE_1_PREFLOP' && (
             <>
               <select
@@ -867,6 +941,14 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
           
           <div className="absolute inset-2 sm:inset-3 rounded-[40px] sm:rounded-[110px] border border-emerald-300/30 pointer-events-none" />
 
+          {/* Smart Memory / Adaptive Drilling Push Reason Banner */}
+          {pushReasonBanner && (
+            <div className="absolute top-3 sm:top-5 left-1/2 -translate-x-1/2 z-30 bg-slate-950/90 border border-emerald-400/40 text-emerald-300 px-3 py-1 sm:px-4 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-mono font-bold flex items-center gap-1.5 shadow-xl whitespace-nowrap max-w-[90%] overflow-hidden text-ellipsis">
+              <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0 animate-pulse" />
+              <span>{pushReasonBanner}</span>
+            </div>
+          )}
+
           {/* Center Board & Pot Display */}
           <div className="relative z-10 flex flex-col items-center justify-center space-y-1 sm:space-y-2">
             
@@ -1023,15 +1105,21 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
         <div className="relative z-20 mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-200 max-w-4xl mx-auto w-full">
           {!isEvaluated ? (
             <div className="space-y-2.5 sm:space-y-3 text-center">
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-3 bg-white border border-slate-200 px-3 py-2 rounded-xl sm:rounded-2xl shadow-xs">
-                <span className="text-xs sm:text-sm md:text-base text-slate-900 font-extrabold">
-                  轮到 Hero ({heroPos}) 决策 | 手牌 [{heroNotation}]:
-                </span>
+              {/* Hero Decision Status Banner */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-2 bg-slate-900 border border-slate-700/80 text-white px-4 py-2.5 rounded-2xl shadow-md">
+                <div className="flex items-center space-x-2">
+                  <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2.5 py-0.5 rounded text-xs font-black animate-pulse">
+                    🎯 HERO 决策中
+                  </span>
+                  <span className="text-xs sm:text-sm md:text-base font-extrabold text-slate-100">
+                    轮到 Hero ({heroPos}) 决策 | 手牌 [{heroNotation}]
+                  </span>
+                </div>
                 <div className="flex items-center space-x-1.5">
                   {heroCards.map((c, i) => (
                     <div
                       key={i}
-                      className={`w-9 h-13 sm:w-11 sm:h-16 md:w-13 md:h-18 rounded-lg border-2 border-slate-300 bg-white shadow-md flex flex-col items-center justify-between p-0.5 font-mono font-black text-xs sm:text-sm select-none ${
+                      className={`w-9 h-12 sm:w-11 sm:h-15 rounded-lg border-2 border-slate-200 bg-white shadow-md flex flex-col items-center justify-between p-0.5 font-mono font-black text-xs sm:text-sm select-none ${
                         SUIT_COLORS[c.suit]
                       }`}
                     >
@@ -1044,19 +1132,27 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
 
               {/* Action Buttons Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 max-w-xl mx-auto">
-                {options.map((opt) => (
-                  <button
-                    key={opt.action}
-                    onClick={() => handleSelectAction(opt.action)}
-                    className={`py-3 sm:py-3.5 px-3 rounded-xl sm:rounded-2xl border font-extrabold text-xs sm:text-sm md:text-base transition-all shadow-sm active:scale-95 cursor-pointer flex flex-col items-center justify-center gap-0.5 text-center ${
-                      opt.action === 'FOLD'
-                        ? 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-800'
-                        : 'bg-amber-500 hover:bg-amber-600 border-amber-600 text-slate-950 font-black shadow-amber-500/20'
-                    }`}
-                  >
-                    <span>{opt.label}</span>
-                  </button>
-                ))}
+                {options.map((opt) => {
+                  let buttonStyle = 'bg-emerald-600 hover:bg-emerald-700 border-emerald-700 text-white font-black shadow-sm shadow-emerald-600/20';
+
+                  if (opt.action === 'FOLD') {
+                    buttonStyle = 'bg-rose-50 hover:bg-rose-100 border-2 border-rose-300 text-rose-800 font-extrabold shadow-xs';
+                  } else if (opt.action === 'CALL' || opt.action === 'CHECK') {
+                    buttonStyle = 'bg-indigo-600 hover:bg-indigo-700 border-indigo-700 text-white font-extrabold shadow-sm shadow-indigo-600/20';
+                  } else if (opt.action === 'THREE_BET' || opt.action === 'FOUR_BET' || opt.action === 'CBET_75') {
+                    buttonStyle = 'bg-teal-600 hover:bg-teal-700 border-teal-700 text-white font-black shadow-sm shadow-teal-600/20';
+                  }
+
+                  return (
+                    <button
+                      key={opt.action}
+                      onClick={() => handleSelectAction(opt.action)}
+                      className={`py-3 sm:py-3.5 px-3 rounded-xl sm:rounded-2xl border text-xs sm:text-sm md:text-base transition-all active:scale-95 cursor-pointer flex flex-col items-center justify-center gap-0.5 text-center ${buttonStyle}`}
+                    >
+                      <span>{opt.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ) : (
