@@ -108,63 +108,67 @@ export function generateGtoDetailedExplanation(
   userAction: ActionType,
   bestAction: ActionType,
   chosenOption: { action?: ActionType; label: string; freq: number; ev?: number } | undefined,
-  bestOption: { action?: ActionType; label: string; freq: number; ev?: number },
+  bestOption: { action?: ActionType; label: string; freq: number; ev?: number } | undefined,
   isOptimal: boolean,
   boardCards: Card[]
 ): { reasoning: string; rangeLogic: string; actionTip: string } {
-  const boardStr = boardCards.map(formatCardString).join(' ');
-  const chosenFreq = chosenOption ? Math.round(chosenOption.freq * 100) : 0;
-  const bestFreq = Math.round(bestOption.freq * 100);
-  const isPrimaryOptimal = chosenOption?.action ? chosenOption.action === bestOption.action : false;
+  const safeBestOption = bestOption || { action: bestAction, label: bestAction || '推荐动作', freq: 1.0 };
+  const boardStr = Array.isArray(boardCards) ? boardCards.map(formatCardString).join(' ') : '';
+  const chosenFreq = chosenOption ? Math.round((chosenOption.freq || 0) * 100) : 0;
+  const bestFreq = Math.round((safeBestOption.freq || 1.0) * 100);
+  const isPrimaryOptimal = chosenOption?.action ? chosenOption.action === safeBestOption.action : false;
   const isMixedOptimal = isOptimal && !isPrimaryOptimal;
 
   // Accurately classify hand strength without templated hallucination
-  const isPair = heroNotation.length === 2;
-  const isSuited = heroNotation.endsWith('s');
-  const r1 = heroNotation[0] as CardRank;
-  const r2 = heroNotation[1] as CardRank;
-  const r1Val = 14 - RANKS.indexOf(r1);
-  const r2Val = 14 - RANKS.indexOf(r2);
+  const safeNotation = heroNotation || 'AA';
+  const isPair = safeNotation.length === 2;
+  const isSuited = safeNotation.endsWith('s');
+  const r1 = safeNotation[0] as CardRank;
+  const r2 = safeNotation[1] as CardRank;
+  const r1Idx = RANKS.indexOf(r1);
+  const r2Idx = RANKS.indexOf(r2);
+  const r1Val = r1Idx !== -1 ? 14 - r1Idx : 10;
+  const r2Val = r2Idx !== -1 ? 14 - r2Idx : 10;
 
   const isPremium = (isPair && r1Val >= 12) || (isSuited && r1Val === 14 && r2Val >= 13);
   const isBorderlineOrWeak = (!isPair && !isSuited && r1Val <= 10) || (r1Val <= 8 && r2Val <= 7);
 
   if (isMixedOptimal && chosenOption) {
     // Valid Mixed Strategy Explanation (0 mBB EV Loss)
-    let reasoning = `在当前 [${heroPos}] 位置下，手牌 [${heroNotation}] 处于 GTO 混合策略边界（包含 ${bestFreq}% ${bestOption.label} 与 ${chosenFreq}% ${chosenOption.label}）。你选择的 [${chosenOption.label}] 完全属于 GTO 合法混合分支。`;
+    let reasoning = `在当前 [${heroPos}] 位置下，手牌 [${safeNotation}] 处于 GTO 混合策略边界（包含 ${bestFreq}% ${safeBestOption.label} 与 ${chosenFreq}% ${chosenOption.label}）。你选择的 [${chosenOption.label}] 完全属于 GTO 合法混合分支。`;
     let rangeLogic = `在博弈论 (GTO Solver) 树中，混合策略分支之间的期望值 (EV) 是完全等价的（EV 损耗为 0 mBB）。选用 [${chosenOption.label}] 可保持总体范围平衡与反剥削防御。`;
     let actionTip = `💡 混合策略提示：实战中对于此类边界手牌，执行 [${chosenOption.label}] 可以有效规避高波动的盲注 3-Bet 挤压，完全不属于漏水决策。`;
 
     if (userAction === 'FOLD') {
-      actionTip = `💡 弃牌要领：对于 [${heroNotation}] 这类缺乏同花/高牌统治力的边缘组合，选择弃牌 (Fold) 避免陷入被统治困境，是极具纪律性的实战好决策。`;
+      actionTip = `💡 弃牌要领：对于 [${safeNotation}] 这类缺乏同花/高牌统治力的边缘组合，选择弃牌 (Fold) 避免陷入被统治困境，是极具纪律性的实战好决策。`;
     }
 
     return { reasoning, rangeLogic, actionTip };
   }
 
   if (isOptimal) {
-    let reasoning = `在当前 [${heroPos}] 位置面对 [${villainPos}] 的场景下，手牌 [${heroNotation}] 选择 [${chosenOption?.label || userAction}] 是 GTO Solver 的核心正 EV 决策 (${bestFreq}% 主导频率)。`;
+    let reasoning = `在当前 [${heroPos}] 位置面对 [${villainPos}] 的场景下，手牌 [${safeNotation}] 选择 [${chosenOption?.label || userAction}] 是 GTO Solver 的核心正 EV 决策 (${bestFreq}% 主导频率)。`;
     let rangeLogic = `该决策完全契合 [${heroPos}] 位的范围构建原理。在 ${boardStr ? `牌面 [${boardStr}]` : '翻前'} 保持该动作频率可最大化积累底池期望值。`;
     let actionTip = `💡 核心要领：实战中请坚决贯彻该决策尺寸与频率，切勿因恐惧防守或过于急躁而随意偏离。`;
 
     if (stage === 'STAGE_1_PREFLOP') {
       if (scenario === 'PREFLOP_RFI') {
         if (userAction === 'FOLD') {
-          reasoning = `手牌 [${heroNotation}] 在 [${heroPos}] 位置属于边缘/弱牌范围，GTO Solver 推荐 100% 弃牌 (Fold)。你的弃牌决策完全正确！`;
-          rangeLogic = `在 6-Max 中，[${heroPos}] 位虽然拥有位置优势，但 [${heroNotation}] 缺乏高牌阻挡与胜率实现能力，直接弃牌避免了盲注 3-Bet 与翻后被统治的盲目损耗。`;
+          reasoning = `手牌 [${safeNotation}] 在 [${heroPos}] 位置属于边缘/弱牌范围，GTO Solver 推荐 100% 弃牌 (Fold)。你的弃牌决策完全正确！`;
+          rangeLogic = `在 6-Max 中，[${heroPos}] 位虽然拥有位置优势，但 [${safeNotation}] 缺乏高牌阻挡与胜率实现能力，直接弃牌避免了盲注 3-Bet 与翻后被统治的盲目损耗。`;
           actionTip = `💡 弃牌要领：对于此类无阻挡效应且胜率极低的手牌，坚决弃牌 (Fold) 是保持高胜率与低波动的正确策略。`;
         } else {
-          reasoning = `手牌 [${heroNotation}] 处于 [${heroPos}] 位的标准 Open Range 中。选择加注入局能有效榨取盲注，建立底池控制权。`;
+          reasoning = `手牌 [${safeNotation}] 处于 [${heroPos}] 位的标准 Open Range 中。选择加注入局能有效榨取盲注，建立底池控制权。`;
           rangeLogic = `在 6-Max 中，[${heroPos}] 位的加注范围拥有强劲的胜率或阻挡效应支撑。`;
           actionTip = `💡 翻前指导：保持标准加注尺寸，遇到 3-Bet 时根据其同花/对子潜能决定 Call 或 4-Bet。`;
         }
       } else if (scenario === 'PREFLOP_BB_DEFENSE') {
         if (userAction === 'FOLD') {
-          reasoning = `手牌 [${heroNotation}] 在 BB 位面对 [${villainPos}] 的加注缺乏足够的防守胜率，GTO Solver 推荐弃牌 (Fold)。弃牌决策完全正确。`;
+          reasoning = `手牌 [${safeNotation}] 在 BB 位面对 [${villainPos}] 的加注缺乏足够的防守胜率，GTO Solver 推荐弃牌 (Fold)。弃牌决策完全正确。`;
           rangeLogic = `盲注防守范围需要精细筛选，放弃胜率实现率极低的手牌能有效保护 BB 位的长线 EV。`;
           actionTip = `💡 盲注防守要领：不具备同花/对子/高牌潜能的弱牌应当果断弃牌。`;
         } else {
-          reasoning = `BB 位面对 [${villainPos}] 的 Open，手牌 [${heroNotation}] 具备极佳的底池赔率与防守价值。选择 [${chosenOption?.label || userAction}] 完美捍卫了盲注。`;
+          reasoning = `BB 位面对 [${villainPos}] 的 Open，手牌 [${safeNotation}] 具备极佳的底池赔率与防守价值。选择 [${chosenOption?.label || userAction}] 完美捍卫了盲注。`;
           rangeLogic = `盲注防守范围需要平衡平跟 (Call) 与 3-Bet 反击。此手牌在当前组合下属于正 EV 防守牌。`;
           actionTip = `💡 盲注防守要领：通过合理平跟/3-Bet 捍卫底池，能大幅降低盲注消耗率。`;
         }
@@ -180,18 +184,18 @@ export function generateGtoDetailedExplanation(
     // Suboptimal or Pure Blunder
     let handTypeLabel = isPremium ? '高胜率强牌' : (isBorderlineOrWeak ? '边缘投机手牌' : '标准范围手牌');
     
-    let reasoning = `在当前场景下，你的选择 [${chosenOption?.label || userAction}] 偏离了 Solver 的主导策略。手牌 [${heroNotation}] 建议选用 [${bestOption.label}] (${bestFreq}% 推荐)。`;
-    let rangeLogic = `GTO Solver 推荐主导动作 [${bestOption.label}]。选用的动作在策略树中无有效频率。`;
+    let reasoning = `在当前场景下，你的选择 [${chosenOption?.label || userAction}] 偏离了 Solver 的主导策略。手牌 [${safeNotation}] 建议选用 [${safeBestOption.label}] (${bestFreq}% 推荐)。`;
+    let rangeLogic = `GTO Solver 推荐主导动作 [${safeBestOption.label}]。选用的动作在策略树中无有效频率。`;
     let actionTip = `💡 避坑建议：请注意评估手牌的阻挡效应与范围优势，避免做出偏离 GTO 的动作。`;
 
     if (userAction === 'FOLD') {
-      reasoning = `手牌 [${heroNotation}] 处于 [${heroPos}] 位的正 EV 加注范围，直接弃牌放弃了入局机会。`;
+      reasoning = `手牌 [${safeNotation}] 处于 [${heroPos}] 位的正 EV 加注范围，直接弃牌放弃了入局机会。`;
       rangeLogic = `如果将此类${handTypeLabel}过于保守地 Fold 掉，你的整个加注/防守范围将被对手过度剥削 (Exploit)。`;
-      actionTip = `💡 修正方案：请坚决使用 [${bestOption.label}] 加注入局，建立底池主动权。`;
-    } else if (bestOption.action === 'FOLD') {
-      reasoning = `手牌 [${heroNotation}] 在 [${heroPos}] 位置不具备入局价值，选择加注属于过度开池 (Over-opening) 的松瘫漏水漏洞。`;
-      rangeLogic = `在 6-Max 中，[${heroPos}] 位加入此类垃圾/弱牌 (如 [${heroNotation}]) 会导致防守范围过宽，面对 3-Bet 或翻后抵抗时将产生巨大 EV 损耗。`;
-      actionTip = `💡 避坑建议：在 [${heroPos}] 位请坚决弃牌 (Fold) [${heroNotation}]，切勿在后位盲目开池。`;
+      actionTip = `💡 修正方案：请坚决使用 [${safeBestOption.label}] 加注入局，建立底池主动权。`;
+    } else if (safeBestOption.action === 'FOLD') {
+      reasoning = `手牌 [${safeNotation}] 在 [${heroPos}] 位置不具备入局价值，选择加注属于过度开池 (Over-opening) 的松瘫漏水漏洞。`;
+      rangeLogic = `在 6-Max 中，[${heroPos}] 位加入此类垃圾/弱牌 (如 [${safeNotation}]) 会导致防守范围过宽，面对 3-Bet 或翻后抵抗时将产生巨大 EV 损耗。`;
+      actionTip = `💡 避坑建议：在 [${heroPos}] 位请坚决弃牌 (Fold) [${safeNotation}]，切勿在后位盲目开池。`;
     } else if (userAction === 'CALL' && stage === 'STAGE_1_PREFLOP') {
       reasoning = `在翻前 [${heroPos}] 位置平跟 (Limp/Flat) 容易将底池主动权让给后位玩家，陷入被挤压加注 (Squeeze) 的被动局面。`;
       rangeLogic = `GTO 翻前策略在中前位极少使用平跟，应当使用 Raise 加注主动掌控底池，或直接 Fold 弃牌。`;
@@ -601,119 +605,129 @@ export const GtoTrainingCabin: React.FC<GtoTrainingCabinProps> = ({
 
   const handleSelectAction = (action: ActionType) => {
     if (isEvaluated) return;
-    setUserAction(action);
-    setIsEvaluated(true);
+    try {
+      setUserAction(action);
+      setIsEvaluated(true);
 
-    const chosenOption = options.find(o => o.action === action);
-    const bestOption = [...options].sort((a, b) => b.freq - a.freq)[0];
+      const safeOptions = Array.isArray(options) && options.length > 0
+        ? options
+        : [{ action, label: action, freq: 1.0 }];
 
-    // Evaluate accuracy strictly adhering to GTO Solver Principles:
-    // 1. Primary Optimal: Chosen action IS the highest frequency option.
-    // 2. Mixed Optimal: Chosen action has an active GTO mixing frequency (>= 0.05 or 5%). In GTO Solvers, mixed actions carry equal EV (0 mBB EV Loss).
-    // 3. Suboptimal / Blunder: Chosen action has 0% or negligible (< 5%) GTO frequency.
+      const chosenOption = safeOptions.find(o => o.action === action) || { action, label: action, freq: 0 };
+      const bestOption = [...safeOptions].sort((a, b) => (b.freq || 0) - (a.freq || 0))[0] || chosenOption;
 
-    const isPrimaryOptimal = chosenOption?.action === bestOption.action;
-    const isMixedOptimal = chosenOption ? (chosenOption.freq >= 0.05 && !isPrimaryOptimal) : false;
-    const isOptimal = isPrimaryOptimal || isMixedOptimal;
+      // Evaluate accuracy strictly adhering to GTO Solver Principles:
+      // 1. Primary Optimal: Chosen action IS the highest frequency option.
+      // 2. Mixed Optimal: Chosen action has an active GTO mixing frequency (>= 0.05 or 5%). In GTO Solvers, mixed actions carry equal EV (0 mBB EV Loss).
+      // 3. Suboptimal / Blunder: Chosen action has 0% or negligible (< 5%) GTO frequency.
 
-    // EV Loss is ZERO for all valid GTO mixed or primary strategies
-    const evLoss = isOptimal
-      ? 0
-      : Math.max(15, Math.round((bestOption.freq - (chosenOption?.freq || 0)) * 100));
+      const isPrimaryOptimal = chosenOption?.action ? chosenOption.action === bestOption.action : false;
+      const isMixedOptimal = chosenOption ? ((chosenOption.freq || 0) >= 0.05 && !isPrimaryOptimal) : false;
+      const isOptimal = isPrimaryOptimal || isMixedOptimal;
 
-    let evalMessage = '';
-    if (isPrimaryOptimal) {
-      evalMessage = `✅ 决策正确！符合 GTO 主导策略 (${Math.round(bestOption.freq * 100)}% 频率)`;
-    } else if (isMixedOptimal && chosenOption) {
-      evalMessage = `✅ 决策正确！符合 GTO 混合策略 (${Math.round(chosenOption.freq * 100)}% 混合频率)`;
-    } else {
-      evalMessage = `❌ 决策偏离 (建议动作: ${bestOption.label})`;
-    }
+      // EV Loss is ZERO for all valid GTO mixed or primary strategies
+      const evLoss = isOptimal
+        ? 0
+        : Math.max(15, Math.round(((bestOption.freq || 1) - (chosenOption?.freq || 0)) * 100));
 
-    const explanation = generateGtoDetailedExplanation(
-      trainingStage,
-      scenarioMode,
-      heroPos,
-      villainPos,
-      heroNotation,
-      action,
-      bestOption.action,
-      chosenOption,
-      bestOption,
-      isOptimal,
-      boardCards
-    );
+      let evalMessage = '';
+      if (isPrimaryOptimal) {
+        evalMessage = `✅ 决策正确！符合 GTO 主导策略 (${Math.round((bestOption.freq || 1) * 100)}% 频率)`;
+      } else if (isMixedOptimal && chosenOption) {
+        evalMessage = `✅ 决策正确！符合 GTO 混合策略 (${Math.round((chosenOption.freq || 0) * 100)}% 混合频率)`;
+      } else {
+        evalMessage = `❌ 决策偏离 (建议动作: ${bestOption.label || '其他推荐'})`;
+      }
 
-    setEvalResult({
-      isOptimal,
-      evLossMBB: evLoss,
-      message: evalMessage,
-      chosenOption,
-      bestOption,
-      explanation,
-    });
+      const explanation = generateGtoDetailedExplanation(
+        trainingStage,
+        scenarioMode,
+        heroPos,
+        villainPos,
+        heroNotation,
+        action,
+        bestOption.action || action,
+        chosenOption,
+        bestOption,
+        isOptimal,
+        boardCards || []
+      );
 
-    // Update session stats
-    setSessionStats((prev) => {
-      const nextTotal = prev.totalHands + 1;
-      const nextCorrect = prev.correctHands + (isOptimal ? 1 : 0);
-      const nextStreak = isOptimal ? prev.currentStreak + 1 : 0;
-      return {
-        totalHands: nextTotal,
-        correctHands: nextCorrect,
-        evLossMBB: prev.evLossMBB + evLoss,
-        currentStreak: nextStreak,
-        bestStreak: Math.max(prev.bestStreak, nextStreak),
+      setEvalResult({
+        isOptimal,
+        evLossMBB: evLoss,
+        message: evalMessage,
+        chosenOption,
+        bestOption,
+        explanation,
+      });
+
+      // Update session stats
+      setSessionStats((prev) => {
+        const nextTotal = (prev?.totalHands || 0) + 1;
+        const nextCorrect = (prev?.correctHands || 0) + (isOptimal ? 1 : 0);
+        const nextStreak = isOptimal ? (prev?.currentStreak || 0) + 1 : 0;
+        return {
+          totalHands: nextTotal,
+          correctHands: nextCorrect,
+          evLossMBB: (prev?.evLossMBB || 0) + evLoss,
+          currentStreak: nextStreak,
+          bestStreak: Math.max(prev?.bestStreak || 0, nextStreak),
+        };
+      });
+
+      // Update Casino Bankroll in Stage 5
+      if (trainingStage === 'STAGE_5_CASINO_RING') {
+        const delta = isOptimal ? 3.5 : -5.0;
+        setCasinoProfitBB((p) => Math.round(((p || 0) + delta) * 10) / 10);
+        setCasinoBankrollBB((b) => Math.round(((b || 100) + delta) * 10) / 10);
+      }
+
+      // Update 169 Hand Mastery Record
+      const key = `${heroPos}_${heroNotation}`;
+      setHandMasteryMap((prev) => {
+        const existing = prev?.[key] || { trials: 0, correct: 0, wrong: 0, evLoss: 0 };
+        return {
+          ...prev,
+          [key]: {
+            trials: existing.trials + 1,
+            correct: existing.correct + (isOptimal ? 1 : 0),
+            wrong: existing.wrong + (isOptimal ? 0 : 1),
+            evLoss: existing.evLoss + evLoss,
+          },
+        };
+      });
+
+      // Append to Hand Logs History
+      const logItem: HandLogItem = {
+        id: `log_${Date.now()}`,
+        timestamp: Date.now(),
+        stage: trainingStage,
+        heroPos,
+        villainPos,
+        heroNotation,
+        boardCards: Array.isArray(boardCards) ? boardCards.map(formatCardString).join(' ') : '',
+        userAction: action,
+        chosenLabel: chosenOption?.label || action,
+        bestAction: bestOption.action || action,
+        bestLabel: bestOption.label || action,
+        isOptimal,
+        evLoss,
+        scenarioMode,
+        explanation,
       };
-    });
+      setHandLogs((prev) => [logItem, ...prev]);
 
-    // Update Casino Bankroll in Stage 5
-    if (trainingStage === 'STAGE_5_CASINO_RING') {
-      const delta = isOptimal ? 3.5 : -5.0;
-      setCasinoProfitBB((p) => Math.round((p + delta) * 10) / 10);
-      setCasinoBankrollBB((b) => Math.round((b + delta) * 10) / 10);
+      if (typeof onRecordHandResult === 'function') {
+        onRecordHandResult({
+          isCorrect: isOptimal,
+          evLossMBB: evLoss,
+          leakTag: !isOptimal ? `${heroPos} ${scenarioMode} 偏离 GTO` : undefined,
+        });
+      }
+    } catch (err) {
+      console.error('Error during handleSelectAction:', err);
     }
-
-    // Update 169 Hand Mastery Record
-    const key = `${heroPos}_${heroNotation}`;
-    setHandMasteryMap((prev) => {
-      const existing = prev[key] || { trials: 0, correct: 0, wrong: 0, evLoss: 0 };
-      return {
-        ...prev,
-        [key]: {
-          trials: existing.trials + 1,
-          correct: existing.correct + (isOptimal ? 1 : 0),
-          wrong: existing.wrong + (isOptimal ? 0 : 1),
-          evLoss: existing.evLoss + evLoss,
-        },
-      };
-    });
-
-    // Append to Hand Logs History
-    const logItem: HandLogItem = {
-      id: `log_${Date.now()}`,
-      timestamp: Date.now(),
-      stage: trainingStage,
-      heroPos,
-      villainPos,
-      heroNotation,
-      boardCards: boardCards.map(formatCardString).join(' '),
-      userAction: action,
-      chosenLabel: chosenOption?.label || action,
-      bestAction: bestOption.action,
-      bestLabel: bestOption.label,
-      isOptimal,
-      evLoss,
-      scenarioMode,
-      explanation,
-    };
-    setHandLogs((prev) => [logItem, ...prev]);
-
-    onRecordHandResult({
-      isCorrect: isOptimal,
-      evLossMBB: evLoss,
-      leakTag: !isOptimal ? `${heroPos} ${scenarioMode} 偏离 GTO` : undefined,
-    });
   };
 
   const handleRequestAudit = async () => {
