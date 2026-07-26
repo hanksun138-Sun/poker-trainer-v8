@@ -605,46 +605,101 @@ export function getGtoPreflopStrategyForHand(pos: Position, handNotation: string
 
   if (pos === 'BTN') {
     if (isPair) {
-      return { raise2_5: 0.60, fold: 0.40 };
+      if (r1Val >= 7) return { raise2_5: 1.0, fold: 0.0 }; // 77-AA 100%
+      return { raise2_5: 0.80, fold: 0.20 }; // 22-66 80%
     }
     if (isSuited) {
-      if (r1Val >= 10 || r2Val >= 9) {
-        return { raise2_5: 0.75, fold: 0.25 };
-      }
-      return { raise2_5: 0.50, fold: 0.50 };
+      if (r1Val === 14) return { raise2_5: 1.0, fold: 0.0 }; // A2s-AKs 100%
+      if (r1Val === 13 && r2Val >= 5) return { raise2_5: 1.0, fold: 0.0 }; // K5s+ 100%
+      if (r1Val === 13) return { raise2_5: 0.75, fold: 0.25 }; // K2s-K4s 75%
+      if (r1Val === 12 && r2Val >= 6) return { raise2_5: 1.0, fold: 0.0 }; // Q6s+ 100%
+      if (r1Val === 12) return { raise2_5: 0.60, fold: 0.40 }; // Q2s-Q5s 60%
+      if (r1Val === 11 && r2Val >= 7) return { raise2_5: 1.0, fold: 0.0 }; // J7s+ 100%
+      if (r1Val === 11) return { raise2_5: 0.50, fold: 0.50 }; // J2s-J6s 50%
+      if (r1Val === 10 && r2Val >= 7) return { raise2_5: 1.0, fold: 0.0 }; // T7s+ 100%
+      if (r1Val === 10) return { raise2_5: 0.50, fold: 0.50 }; // T2s-T6s 50%
+      if (r1Val === 9 && r2Val >= 6) return { raise2_5: 0.85, fold: 0.15 }; // 96s+
+      if (r1Val === 8 && r2Val >= 5) return { raise2_5: 0.80, fold: 0.20 }; // 85s+
+      if (r1Val === 7 && r2Val >= 5) return { raise2_5: 0.75, fold: 0.25 }; // 75s+
+      if (r1Val === 6 && r2Val >= 4) return { raise2_5: 0.70, fold: 0.30 }; // 64s+
+      if (r1Val === 5 && r2Val >= 3) return { raise2_5: 0.65, fold: 0.35 }; // 53s+
+      return { raise2_5: 0.30, fold: 0.70 }; // Bottom suited e.g. 72s, 82s, 42s
     }
+
     // Offsuit Hands on BTN
-    if (handNotation === '65o' || handNotation === '76o' || handNotation === '87o' || handNotation === '54o') {
-      return { fold: 0.85, raise2_5: 0.15 }; // 85% Fold / 15% Mix Raise for offsuit connectors on BTN
+    if (r1Val === 14 && r2Val >= 10) return { raise2_5: 1.0, fold: 0.0 }; // ATo-AKo 100%
+    if (r1Val === 14 && r2Val >= 8) return { raise2_5: 0.80, fold: 0.20 }; // A8o, A9o
+    if (r1Val === 14) return { raise2_5: 0.45, fold: 0.55 }; // A2o-A7o mixed
+    if (r1Val === 13 && r2Val >= 10) return { raise2_5: 0.90, fold: 0.10 }; // KTo-KQo
+    if (r1Val === 13 && r2Val === 9) return { raise2_5: 0.60, fold: 0.40 }; // K9o
+    if (r1Val === 13 && r2Val === 8) return { raise2_5: 0.30, fold: 0.70 }; // K8o
+    if (r1Val === 12 && r2Val >= 10) return { raise2_5: 0.80, fold: 0.20 }; // QTo, QJo
+    if (r1Val === 12 && r2Val === 9) return { raise2_5: 0.50, fold: 0.50 }; // Q9o
+    if (r1Val === 11 && r2Val >= 9) return { raise2_5: 0.50, fold: 0.50 }; // J9o, JTo
+    if (r1Val === 10 && r2Val === 9) return { raise2_5: 0.40, fold: 0.60 }; // T9o
+
+    // Borderline offsuit connectors (87o, 76o, 65o, 54o)
+    if ((r1Val === 8 && r2Val === 7) || (r1Val === 7 && r2Val === 6) || (r1Val === 6 && r2Val === 5) || (r1Val === 5 && r2Val === 4)) {
+      return { fold: 0.85, raise2_5: 0.15 }; // 85% Fold / 15% Mix Raise
     }
-    if (r1Val >= 12 && r2Val >= 8) { // K8o, Q9o, J9o
-      return { raise2_5: 0.60, fold: 0.40 };
-    }
-    if (r1Val === 14) { // Ax offsuit e.g. A3o, A2o
-      return { raise2_5: 0.55, fold: 0.45 };
-    }
-    // Pure Trash Offsuit Hands (e.g., J2o, Q3o, K2o, 94o, 72o)
+
+    // Pure Trash Offsuit Hands (74o, 73o, 72o, 85o, 84o, 83o, 82o, 94o, 93o, 92o, T5o, J4o, Q2o, K4o, etc.)
     return { fold: 1.0, raise2_5: 0.0 };
   }
 
-  if (pos === 'CO' || pos === 'HJ' || pos === 'UTG') {
-    if (isSuited && r1Val >= 11) {
-      return { raise2_5: 0.50, fold: 0.50 };
+  if (pos === 'CO') {
+    if (isPair) {
+      if (r1Val >= 10) return { raise2_5: 1.0, fold: 0.0 };
+      return { raise2_5: 0.80, fold: 0.20 };
     }
+    if (isSuited) {
+      if (r1Val === 14) return { raise2_5: 1.0, fold: 0.0 };
+      if (r1Val === 13 && r2Val >= 9) return { raise2_5: 1.0, fold: 0.0 };
+      if (r1Val === 12 && r2Val >= 9) return { raise2_5: 1.0, fold: 0.0 };
+      if (r1Val >= 10 && r2Val >= 8) return { raise2_5: 0.80, fold: 0.20 };
+      if (r1Val - r2Val <= 1 && r2Val >= 5) return { raise2_5: 0.60, fold: 0.40 };
+      return { fold: 0.90, raise2_5: 0.10 };
+    }
+    if (r1Val === 14 && r2Val >= 10) return { raise2_5: 0.90, fold: 0.10 };
+    if (r1Val === 13 && r2Val >= 11) return { raise2_5: 0.80, fold: 0.20 };
+    if (r1Val === 12 && r2Val === 11) return { raise2_5: 0.60, fold: 0.40 };
+    return { fold: 1.0, raise2_5: 0.0 };
+  }
+
+  if (pos === 'HJ') {
+    if (isPair && r1Val >= 6) return { raise2_5: 0.90, fold: 0.10 };
+    if (isSuited && r1Val === 14) return { raise2_5: 0.90, fold: 0.10 };
+    if (isSuited && r1Val >= 10 && r2Val >= 9) return { raise2_5: 0.80, fold: 0.20 };
+    if (r1Val === 14 && r2Val >= 11) return { raise2_5: 0.80, fold: 0.20 };
+    if (r1Val === 13 && r2Val >= 12) return { raise2_5: 0.70, fold: 0.30 };
+    return { fold: 1.0, raise2_5: 0.0 };
+  }
+
+  if (pos === 'UTG') {
+    if (isPair && r1Val >= 7) return { raise2_5: 0.90, fold: 0.10 };
+    if (isSuited && r1Val === 14 && r2Val >= 10) return { raise2_5: 0.90, fold: 0.10 };
+    if (isSuited && r1Val >= 10 && r2Val >= 9) return { raise2_5: 0.70, fold: 0.30 };
+    if (r1Val === 14 && r2Val >= 12) return { raise2_5: 0.80, fold: 0.20 };
     return { fold: 1.0, raise2_5: 0.0 };
   }
 
   if (pos === 'SB') {
+    if (isPair) return { raise3: 0.85, fold: 0.15 };
+    if (isSuited && r1Val >= 10) return { raise3: 0.70, call: 0.30 };
     if (isSuited) return { raise3: 0.40, call: 0.30, fold: 0.30 };
-    return { fold: 0.80, raise3: 0.20 };
+    if (r1Val === 14) return { raise3: 0.60, fold: 0.40 };
+    return { fold: 0.85, raise3: 0.15 };
   }
 
   if (pos === 'BB') {
-    if (isSuited) return { call: 0.60, fold: 0.40 };
-    if (r1Val >= 10) return { call: 0.50, fold: 0.50 };
+    if (isPair && r1Val >= 8) return { threeBet: 0.40, call: 0.60 };
+    if (isPair) return { call: 0.80, fold: 0.20 };
+    if (isSuited && r1Val >= 10) return { call: 0.70, threeBet: 0.30 };
+    if (isSuited) return { call: 0.65, fold: 0.35 };
+    if (r1Val >= 11) return { call: 0.60, fold: 0.40 };
     return { fold: 0.85, call: 0.15 };
   }
 
-  return { fold: 1.0 };
+  return { fold: 1.0, raise2_5: 0.0 };
 }
 

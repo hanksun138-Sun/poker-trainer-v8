@@ -149,13 +149,25 @@ export function generateGtoDetailedExplanation(
 
     if (stage === 'STAGE_1_PREFLOP') {
       if (scenario === 'PREFLOP_RFI') {
-        reasoning = `手牌 [${heroNotation}] 处于 [${heroPos}] 位的标准 Open Range 中。选择加注入局能有效榨取盲注，建立底池控制权。`;
-        rangeLogic = `在 6-Max 中，[${heroPos}] 位的加注范围拥有强劲的胜率或阻挡效应支撑。`;
-        actionTip = `💡 翻前指导：保持标准加注尺寸，遇到 3-Bet 时根据其同花/对子潜能决定 Call 或 4-Bet。`;
+        if (userAction === 'FOLD') {
+          reasoning = `手牌 [${heroNotation}] 在 [${heroPos}] 位置属于边缘/弱牌范围，GTO Solver 推荐 100% 弃牌 (Fold)。你的弃牌决策完全正确！`;
+          rangeLogic = `在 6-Max 中，[${heroPos}] 位虽然拥有位置优势，但 [${heroNotation}] 缺乏高牌阻挡与胜率实现能力，直接弃牌避免了盲注 3-Bet 与翻后被统治的盲目损耗。`;
+          actionTip = `💡 弃牌要领：对于此类无阻挡效应且胜率极低的手牌，坚决弃牌 (Fold) 是保持高胜率与低波动的正确策略。`;
+        } else {
+          reasoning = `手牌 [${heroNotation}] 处于 [${heroPos}] 位的标准 Open Range 中。选择加注入局能有效榨取盲注，建立底池控制权。`;
+          rangeLogic = `在 6-Max 中，[${heroPos}] 位的加注范围拥有强劲的胜率或阻挡效应支撑。`;
+          actionTip = `💡 翻前指导：保持标准加注尺寸，遇到 3-Bet 时根据其同花/对子潜能决定 Call 或 4-Bet。`;
+        }
       } else if (scenario === 'PREFLOP_BB_DEFENSE') {
-        reasoning = `BB 位面对 [${villainPos}] 的 Open，手牌 [${heroNotation}] 具备极佳的底池赔率与防守价值。选择 [${chosenOption?.label || userAction}] 完美捍卫了盲注。`;
-        rangeLogic = `盲注防守范围需要平衡平跟 (Call) 与 3-Bet 反击。此手牌在当前组合下属于正 EV 防守牌。`;
-        actionTip = `💡 盲注防守要领：通过合理平跟/3-Bet 捍卫底池，能大幅降低盲注消耗率。`;
+        if (userAction === 'FOLD') {
+          reasoning = `手牌 [${heroNotation}] 在 BB 位面对 [${villainPos}] 的加注缺乏足够的防守胜率，GTO Solver 推荐弃牌 (Fold)。弃牌决策完全正确。`;
+          rangeLogic = `盲注防守范围需要精细筛选，放弃胜率实现率极低的手牌能有效保护 BB 位的长线 EV。`;
+          actionTip = `💡 盲注防守要领：不具备同花/对子/高牌潜能的弱牌应当果断弃牌。`;
+        } else {
+          reasoning = `BB 位面对 [${villainPos}] 的 Open，手牌 [${heroNotation}] 具备极佳的底池赔率与防守价值。选择 [${chosenOption?.label || userAction}] 完美捍卫了盲注。`;
+          rangeLogic = `盲注防守范围需要平衡平跟 (Call) 与 3-Bet 反击。此手牌在当前组合下属于正 EV 防守牌。`;
+          actionTip = `💡 盲注防守要领：通过合理平跟/3-Bet 捍卫底池，能大幅降低盲注消耗率。`;
+        }
       }
     } else if (stage === 'STAGE_2_FLOP') {
       reasoning = `在翻牌面 [${boardStr}] 上，Hero 拥有显著的范围优势。下注 33% Pot 小注能够以低成本对 Villain 的范围施加全盘压力。`;
@@ -176,6 +188,10 @@ export function generateGtoDetailedExplanation(
       reasoning = `手牌 [${heroNotation}] 处于 [${heroPos}] 位的正 EV 加注范围，直接弃牌放弃了入局机会。`;
       rangeLogic = `如果将此类${handTypeLabel}过于保守地 Fold 掉，你的整个加注/防守范围将被对手过度剥削 (Exploit)。`;
       actionTip = `💡 修正方案：请坚决使用 [${bestOption.label}] 加注入局，建立底池主动权。`;
+    } else if (userAction !== 'FOLD' && bestOption.action === 'FOLD') {
+      reasoning = `手牌 [${heroNotation}] 在 [${heroPos}] 位置不具备入局价值，选择加注属于过度开池 (Over-opening) 的松瘫漏水漏洞。`;
+      rangeLogic = `在 6-Max 中，[${heroPos}] 位加入此类垃圾/弱牌 (如 [${heroNotation}]) 会导致防守范围过宽，面对 3-Bet 或翻后抵抗时将产生巨大 EV 损耗。`;
+      actionTip = `💡 避坑建议：在 [${heroPos}] 位请坚决弃牌 (Fold) [${heroNotation}]，切勿在后位盲目开池。`;
     } else if (userAction === 'CALL' && stage === 'STAGE_1_PREFLOP') {
       reasoning = `在翻前 [${heroPos}] 位置平跟 (Limp/Flat) 容易将底池主动权让给后位玩家，陷入被挤压加注 (Squeeze) 的被动局面。`;
       rangeLogic = `GTO 翻前策略在中前位极少使用平跟，应当使用 Raise 加注主动掌控底池，或直接 Fold 弃牌。`;
