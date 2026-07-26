@@ -103,7 +103,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-emerald-500 selection:text-slate-950 flex flex-col justify-between">
+    <div className="min-h-screen bg-slate-100 text-slate-900 font-sans selection:bg-emerald-200 selection:text-slate-900 flex flex-col justify-between">
       <div>
         <Navbar
           activeTab={activeTab}
@@ -140,10 +140,10 @@ export default function App() {
       </div>
 
       {/* Footer */}
-      <footer className="border-t border-slate-900 bg-slate-950/80 py-4 text-center text-xs text-slate-500 font-mono">
+      <footer className="border-t border-slate-200 bg-white/80 py-4 text-center text-xs text-slate-500 font-mono shadow-inner">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>GTO 扑克训练舱 v8.0 • 多学员敏捷特训版 (RangeConverter & TexasSolver)</span>
-          <div className="flex items-center space-x-3 text-slate-400">
+          <div className="flex items-center space-x-3 text-slate-600">
             <span>支持 iPad / iPhone 独立安装运行</span>
             <span>•</span>
             <span>Gemini 3.6 Flash AI 审计</span>
